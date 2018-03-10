@@ -1,0 +1,7 @@
+.idea/
+model_exports/
+time_domain_hpf/
+*.xlsx
+*.gsheet
+*.ini
+*.7z
