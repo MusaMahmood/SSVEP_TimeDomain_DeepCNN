@@ -13,6 +13,7 @@ import datetime
 import glob
 import time
 import winsound as ws
+import tf_shared as tfs
 
 from scipy.io import loadmat, savemat
 from sklearn.model_selection import train_test_split
@@ -23,7 +24,7 @@ from tensorflow.python.tools import optimize_for_inference_lib
 # CONSTANTS:
 TIMESTAMP_START = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d_%H.%M.%S')
 wlens = [128, 192, 256, 384, 512]
-w_sel = 4  # 0 -> 4
+w_sel = 2  # 0 -> 4
 win_len = wlens[w_sel]
 electrodes = ''
 descriptor = 'time_domain_hpf_new'  # FIXED + TRUNCATED
@@ -52,13 +53,7 @@ SELECT_DATA_CHANNELS = np.asarray(range(1, TOTAL_DATA_CHANNELS + 1))
 NUMBER_DATA_CHANNELS = SELECT_DATA_CHANNELS.shape[0]  # Selects first int in shape
 
 # FOR MODEL DESIGN
-if w_sel == 0:
-    TRAINING_TOTAL = 256000
-elif w_sel == 1:
-    TRAINING_TOTAL = 128000
-else:
-    TRAINING_TOTAL = 32000
-
+TRAINING_TOTAL = 128000
 TRAIN_BATCH_SIZE = 64
 NUMBER_STEPS = TRAINING_TOTAL // TRAIN_BATCH_SIZE
 TEST_BATCH_SIZE = 100
@@ -218,8 +213,12 @@ def get_all_activations(training_data, folder_name0):
         # Save all activations:
     fn_out = folder_name0 + 'all_activations.mat'
     savemat(fn_out, mdict={'input_sample': training_data, 'h_conv1': w_hconv1, 'h_conv2': w_hconv2,
-                           'h_conv_flat': w_hconv4_flat, 'h_fc1': w_hfc1, 'h_fc1_drop': w_hfc1_do,
-                           'y_out': w_y_out})
+                           'h_conv3': w_hconv3, 'h_conv4': w_hconv4, 'h_conv_flat': w_hconv4_flat, 'h_fc1': w_hfc1,
+                           'y_out': w_y_out, 'y_correct': y_val_data})
+
+
+# def save_statistics(folder_name0):
+#     savemat(folder_name0 + 'stats.mat', mdict={'training_rate': val_accuracy_array})
 
 
 # MODEL INPUT #
@@ -232,13 +231,11 @@ x_input = tf.reshape(x, [-1, *DEFAULT_IMAGE_SHAPE, 1])
 # first convolution and pooling
 W_conv1 = weight_variable(WEIGHT_VAR_CL1)
 b_conv1 = bias_variable([BIAS_VAR_CL1])
-# h_conv1 = conv2d(x_input, W_conv1, b_conv1, STRIDE_CONV2D_1)
 h_conv1 = leaky_conv2d(x_input, W_conv1, b_conv1, STRIDE_CONV2D_1, alpha=alpha_c1)
 
 # second convolution and pooling
 W_conv2 = weight_variable(WEIGHT_VAR_CL2)
 b_conv2 = bias_variable([BIAS_VAR_CL2])
-# h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
 h_conv2 = leaky_conv2d(h_conv1, W_conv2, b_conv2, STRIDE_CONV2D_2, alpha=alpha_c2)
 
 W_conv3 = weight_variable(WEIGHT_VAR_CL3)
@@ -318,6 +315,9 @@ with tf.Session(config=config) as sess:
     # save model as pbtxt:
     tf.train.write_graph(sess.graph_def, EXPORT_DIRECTORY, MODEL_NAME + '.pbtxt', True)
 
+    total_val_steps = NUMBER_STEPS // 20
+    val_accuracy_array = np.zeros([total_val_steps, 2], dtype=np.float32)
+
     for i in range(NUMBER_STEPS):
         offset = (i * TRAIN_BATCH_SIZE) % (x_train.shape[0] - TRAIN_BATCH_SIZE)
         batch_x_train = x_train[offset:(offset + TRAIN_BATCH_SIZE)]
@@ -328,11 +328,14 @@ with tf.Session(config=config) as sess:
 
         if i % 20 == 0:
             # Calculate batch loss and accuracy
+
             offset = (val_step * TEST_BATCH_SIZE) % (x_test.shape[0] - TEST_BATCH_SIZE)
             batch_x_val = x_test[offset:(offset + TEST_BATCH_SIZE), :, :]
             batch_y_val = y_test[offset:(offset + TEST_BATCH_SIZE), :]
             val_accuracy = accuracy.eval(feed_dict={x: batch_x_val, y: batch_y_val, keep_prob: 1.0})
             print("Validation step %d, validation accuracy %g" % (val_step, val_accuracy))
+            val_accuracy_array[val_step, 0] = (1 + val_step) * 20 * TRAIN_BATCH_SIZE
+            val_accuracy_array[val_step, 1] = val_accuracy
             val_step += 1
 
         train_step.run(feed_dict={x: batch_x_train, y: batch_y_train, keep_prob: 0.5})
@@ -358,18 +361,22 @@ with tf.Session(config=config) as sess:
     print(tf.Tensor.eval(tf_confusion_matrix, feed_dict=None, session=None))  # 'Confusion Matrix: \n\n',
 
     # Get one sample and see what it outputs (Activations?) ?
-    feature_map_folder_name = \
-        EXPORT_DIRECTORY + 'S' + str(subject_number) + \
-        'feature_maps_' + TIMESTAMP_START + '_wlen' + str(DATA_WINDOW_SIZE) + '/'
-    os.makedirs(feature_map_folder_name)
-
     ws.Beep(900, 1000)
     # Extract weights of following layers
-    # user_input = input('Save all activations?')
-    # if user_input == "1" or user_input.lower() == "y":
-    #     get_all_activations(x_val_data, feature_map_folder_name)
-    #
-    user_input = input('Export Current Model?')
+    user_input = input('Save all activations?')
+    feature_map_folder_name = \
+        EXPORT_DIRECTORY + 'S' + str(subject_number) + \
+        'data_' + TIMESTAMP_START + '_wlen' + str(DATA_WINDOW_SIZE) + '/'
     if user_input == "1" or user_input.lower() == "y":
-        saver.save(sess, CHECKPOINT_FILE)
-        export_model([input_node_name, keep_prob_node_name], output_node_name)
+        os.makedirs(feature_map_folder_name)
+        get_all_activations(x_val_data, feature_map_folder_name)
+        ws.Beep(900, 1000)
+        # user_input = input('Save Statistics?')
+        # if user_input == "1" or user_input.lower() == "y":
+        tfs.save_statistics(feature_map_folder_name, val_accuracy_array)
+        ws.Beep(900, 1000)
+
+    if user_input == "1" or user_input.lower() == "y":
+        user_input = input('Export Current Model?')
+    saver.save(sess, CHECKPOINT_FILE)
+    export_model([input_node_name, keep_prob_node_name], output_node_name)
