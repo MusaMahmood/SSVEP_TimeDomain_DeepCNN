@@ -97,8 +97,16 @@ def max_pool_valid(x_, ksize, stride):
     return tf.nn.max_pool(x_, ksize=ksize, strides=stride, padding='VALID')
 
 
+def fully_connect_elu_dropout(x, w, b, keep_prob):
+    return tf.nn.dropout(fully_connect(x, w, b, activation='elu'), keep_prob=keep_prob)
+
+
 def fully_connect_relu_dropout(x, w, b, keep_prob):
     return tf.nn.dropout(fully_connect(x, w, b, activation='relu'), keep_prob=keep_prob)
+
+
+def fully_connect_leakyrelu_dropout(x, w, b, keep_prob, alpha=0.01):
+    return tf.nn.dropout(fully_connect(x, w, b, 'leakyrelu', alpha=alpha), keep_prob=keep_prob)
 
 
 # For a relu activated FC

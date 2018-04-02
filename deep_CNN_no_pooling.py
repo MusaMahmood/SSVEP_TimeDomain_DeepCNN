@@ -97,7 +97,6 @@ output_node_name = 'output'
 
 def get_activations_mat(layer, input_val, shape):
     units = sess.run(layer, feed_dict={x: np.reshape(input_val, shape, order='F'), keep_prob: 1.0})
-    # print("units.shape: ", units.shape)
     return units
 
 
@@ -275,16 +274,14 @@ with tf.Session(config=config) as sess:
     tf_confusion_matrix = tf.confusion_matrix(labels=y_val_tf, predictions=predictions, num_classes=NUMBER_CLASSES)
     print(tf.Tensor.eval(tf_confusion_matrix, feed_dict=None, session=None))  # 'Confusion Matrix: \n\n',
 
-    # Get one sample and see what it outputs (Activations?) ?
-    feature_map_folder_name = \
-        EXPORT_DIRECTORY + 'S' + str(subject_number) + \
-        'feature_maps_' + TIMESTAMP_START + '_wlen' + str(DATA_WINDOW_SIZE) + '/'
-    os.makedirs(feature_map_folder_name)
-
     ws.Beep(900, 1000)
     # Extract weights of following layers
     user_input = input('Save all activations?')
     if user_input == "1" or user_input.lower() == "y":
+        feature_map_folder_name = \
+            EXPORT_DIRECTORY + 'S' + str(subject_number) + \
+            'feature_maps_' + TIMESTAMP_START + '_wlen' + str(DATA_WINDOW_SIZE) + '/'
+        os.makedirs(feature_map_folder_name)
         get_all_activations(x_val_data, feature_map_folder_name)
         tfs.save_statistics(feature_map_folder_name, val_accuracy_array)
     #
