@@ -174,15 +174,13 @@ b_fco = tfs.bias(BIAS_VAR_FC_OUTPUT)
 
 y_conv = tfs.connect(h_fc1_drop, W_fco, b_fco)
 
-outputs = tf.nn.softmax(y_conv, name=output_node_name)
-
-prediction = tf.argmax(outputs, 1)
-
 # training and reducing the cost/loss function
-cross_entropy = tfs.loss_layer(y, y_conv)
+cross_entropy = tfs.loss_layer_v2(y, y_conv)
 train_step = tfs.train(LEARNING_RATE, cross_entropy)
-correct_prediction = tfs.check_prediction(y, outputs)
-accuracy = tfs.get_accuracy(correct_prediction)  # Float 32
+# Output Node and Prediction; is it correct, and accuracy
+outputs = tf.nn.softmax(y_conv, name=output_node_name)
+prediction_check, prediction = tfs.check_prediction(y, outputs)
+accuracy = tfs.get_accuracy(prediction_check)  # Float 32
 
 # merge
 merged_summary_op = tf.summary.merge_all()

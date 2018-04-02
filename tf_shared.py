@@ -129,8 +129,11 @@ def connect_v2(x, w, b):
 
 
 def loss_layer(y, y_conv):
-    # return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y, logits=y_conv))
     return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=y_conv))
+
+
+def loss_layer_v2(y, y_conv):
+    return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y, logits=y_conv))
 
 
 def get_accuracy(correct_prediction):
@@ -142,31 +145,10 @@ def train(learning_rate, cross_entropy):
 
 
 def check_prediction(y, outputs):
-    return tf.equal(tf.argmax(outputs, 1), tf.argmax(y, 1))
+    prediction = tf.argmax(outputs, 1)
+    correct_class = tf.argmax(y, 1)
+    return tf.equal(prediction, correct_class), prediction
 
 
 def get_outputs(y, node_name):
     return tf.nn.softmax(y, node_name)
-
-# ## MATLAB FUNCTIONS FOR SAVING DATA
-# def get_activations(layer, input_val, shape, directory, file_name, sum_all=False):
-#     os.makedirs(directory)
-#     units = sess.run(layer, feed_dict={x: np.reshape(input_val, shape, order='F'), keep_prob: 1.0})
-#     print("units.shape: ", units.shape)
-#     # plot_nn_filter(units, directory + file_name, True)
-#     new_shape = [units.shape[1], units.shape[2]]
-#     feature_maps = units.shape[3]
-#     filename_ = directory + file_name
-#     if sum_all:
-#         new_array = np.reshape(units.sum(axis=3), new_shape)
-#         pd.DataFrame(new_array).to_csv(filename_ + '_weight_matrix' + '.csv', index=False, header=False)
-#         major_axis = np.argmax(new_array.shape)
-#         summed_array = new_array.sum(axis=major_axis)
-#         pd.DataFrame(summed_array).to_csv(filename_ + '_sum_all' + '.csv', index=False, header=False)
-#         print('All Values:')
-#         return summed_array
-#     else:
-#         for i0 in range(feature_maps):
-#             pd.DataFrame(units[:, :, :, i0].reshape(new_shape)).to_csv(
-#                 filename_ + '_' + str(i0 + 1) + '.csv', index=False, header=False)
-#         return units

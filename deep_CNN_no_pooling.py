@@ -19,7 +19,7 @@ from sklearn.model_selection import train_test_split
 # CONSTANTS:
 TIMESTAMP_START = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d_%H.%M.%S')
 wlens = [128, 192, 256, 384, 512]
-w_sel = 0  # 0 -> 4
+w_sel = 2  # 0 -> 4
 win_len = wlens[w_sel]
 electrodes = ''
 descriptor = 'time_domain_hpf_new'  # FIXED + TRUNCATED
@@ -175,19 +175,24 @@ b_fco = tfs.bias(BIAS_VAR_FC_OUTPUT)
 # y_conv = tf.add(tf.matmul(h_fc1_drop, W_fco), b_fco)
 y_conv = tfs.connect(h_fc1_drop, W_fco, b_fco)
 
+# training and reducing the cost/loss function
+cross_entropy = tfs.loss_layer_v2(y, y_conv)
+train_step = tfs.train(LEARNING_RATE, cross_entropy)
+# Output Node and Prediction; is it correct, and accuracy
 outputs = tf.nn.softmax(y_conv, name=output_node_name)
+prediction_check, prediction = tfs.check_prediction(y, outputs)
+accuracy = tfs.get_accuracy(prediction_check)  # Float 32
 
-prediction = tf.argmax(outputs, 1)
+# outputs = tf.nn.softmax(y_conv, name=output_node_name)
+
+# prediction = tf.argmax(outputs, 1)
 
 # training and reducing the cost/loss function
-cross_entropy = tfs.loss_layer(y, y_conv)
-train_step = tfs.train(LEARNING_RATE, cross_entropy)
-correct_prediction = tfs.check_prediction(y, outputs)
-accuracy = tfs.get_accuracy(correct_prediction)  # Float 32
+# cross_entropy = tfs.loss_layer(y, y_conv)  # Calculate cross-entropy loss
 # cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=y_conv))
 # train_step = tf.train.AdamOptimizer(LEARNING_RATE).minimize(cross_entropy)
-# correct_prediction = tf.equal(tf.argmax(outputs, 1), tf.argmax(y, 1))
-# accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+# prediction_check = tf.equal(tf.argmax(outputs, 1), tf.argmax(y, 1))
+# accuracy = tf.reduce_mean(tf.cast(prediction_check, tf.float32))
 
 # merge
 merged_summary_op = tf.summary.merge_all()
