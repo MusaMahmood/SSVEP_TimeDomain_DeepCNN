@@ -5,3 +5,6 @@ time_domain_hpf/
 *.gsheet
 *.ini
 *.7z
+time_domain_bpf/
+__pycache__/
+time_domain_hpf_new/
