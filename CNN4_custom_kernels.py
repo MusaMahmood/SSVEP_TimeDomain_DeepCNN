@@ -11,9 +11,7 @@ import datetime
 import time
 import winsound as ws
 import tf_shared as tfs
-from scipy.io import savemat
 from sklearn.model_selection import train_test_split
-
 
 # CONSTANTS:
 TIMESTAMP_START = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d_%H.%M.%S')
@@ -22,7 +20,7 @@ w_sel = 0  # 0 -> 4
 win_len = wlens[w_sel]
 electrodes = ''
 descriptor = 'time_domain_hpf_new'  # FIXED + TRUNCATED
-subject_number = 99
+subject_number = 8
 subject_folder = '/S' + str(subject_number)
 folder_name = ''
 
@@ -50,7 +48,7 @@ NUMBER_DATA_CHANNELS = SELECT_DATA_CHANNELS.shape[0]  # Selects first int in sha
 
 # FOR MODEL DESIGN
 if w_sel == 0:
-    TRAINING_TOTAL = 128000
+    TRAINING_TOTAL = 32000
 else:
     TRAINING_TOTAL = 32000
 TRAIN_BATCH_SIZE = 64
@@ -93,42 +91,6 @@ input_node_name = 'input'
 keep_prob_node_name = 'keep_prob'
 output_node_name = 'output'
 
-
-def get_activations_mat(layer, input_val, shape):
-    units = sess.run(layer, feed_dict={x: np.reshape(input_val, shape, order='F'), keep_prob: 1.0})
-    return units
-
-
-def get_all_activations(training_data, folder_name0):
-    w_hconv1 = np.empty([0, *h_conv1_shape[1:]], np.float32)
-    w_hconv2 = np.empty([0, *h_conv2_shape[1:]], np.float32)
-    w_hconv3 = np.empty([0, *h_conv3_shape[1:]], np.float32)
-    w_hconv4 = np.empty([0, *h_conv4_shape[1:]], np.float32)
-    w_hconv4_flat = np.empty([0, h_conv_flat_shape[1]], np.float32)
-    # w_hfc1 = np.empty([0, h_fc1_shape[1]], np.float32)
-    w_hfc1_do = np.empty([0, h_fc1_drop_shape[1]], np.float32)
-    w_y_out = np.empty([0, y_conv_shape[1]], np.float32)
-    print('Getting all Activations: please wait... ')
-    for it in range(0, training_data.shape[0]):
-        if it % 100 == 0:
-            print('Saved Sample #', it)
-        sample = training_data[it]
-        w_hconv1 = np.concatenate((w_hconv1, get_activations_mat(h_conv1, sample, INPUT_IMAGE_SHAPE)), axis=0)
-        w_hconv2 = np.concatenate((w_hconv2, get_activations_mat(h_conv2, sample, INPUT_IMAGE_SHAPE)), axis=0)
-        w_hconv3 = np.concatenate((w_hconv3, get_activations_mat(h_conv3, sample, INPUT_IMAGE_SHAPE)), axis=0)
-        w_hconv4 = np.concatenate((w_hconv4, get_activations_mat(h_conv4, sample, INPUT_IMAGE_SHAPE)), axis=0)
-        w_hconv4_flat = np.concatenate((w_hconv4_flat, get_activations_mat(h_conv_flat, sample, INPUT_IMAGE_SHAPE)),
-                                       axis=0)
-        # w_hfc1 = np.concatenate((w_hfc1, get_activations_mat(h_fc1, sample, INPUT_IMAGE_SHAPE)), axis=0)
-        w_hfc1_do = np.concatenate((w_hfc1_do, get_activations_mat(h_fc1_drop, sample, INPUT_IMAGE_SHAPE)), axis=0)
-        w_y_out = np.concatenate((w_y_out, get_activations_mat(y_conv, sample, INPUT_IMAGE_SHAPE)), axis=0)
-        # Save all activations:
-    fn_out = folder_name0 + 'all_activations.mat'
-    savemat(fn_out, mdict={'input_sample': training_data, 'h_conv1': w_hconv1, 'h_conv2': w_hconv2,
-                           'h_conv_flat': w_hconv4_flat, 'h_fc1_drop': w_hfc1_do,
-                           'y_out': w_y_out})
-
-
 # MODEL INPUT #
 x = tf.placeholder(tf.float32, shape=[None, *DEFAULT_IMAGE_SHAPE], name=input_node_name)
 keep_prob = tf.placeholder(tf.float32, name=keep_prob_node_name)
@@ -144,7 +106,6 @@ h_conv1 = tfs.leaky_conv(x_input, W_conv1, b_conv1, STRIDE_CONV2D_1, alpha=alpha
 # second convolution and pooling
 W_conv2 = tfs.weight(WEIGHT_VAR_CL2)
 b_conv2 = tfs.bias([BIAS_VAR_CL2])
-# h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
 h_conv2 = tfs.leaky_conv(h_conv1, W_conv2, b_conv2, STRIDE_CONV2D_2, alpha=alpha_c2)
 
 W_conv3 = tfs.weight(WEIGHT_VAR_CL3)
@@ -265,13 +226,16 @@ with tf.Session(config=config) as sess:
     # Extract weights of following layers
     user_input = input('Save all activations?')
     if user_input == "1" or user_input.lower() == "y":
-        feature_map_folder_name = \
+        output_folder_name = \
             EXPORT_DIRECTORY + 'S' + str(subject_number) + \
             'feature_maps_' + TIMESTAMP_START + '_wlen' + str(DATA_WINDOW_SIZE) + '/'
-        os.makedirs(feature_map_folder_name)
-        get_all_activations(x_val_data, feature_map_folder_name)
-        tfs.save_statistics(feature_map_folder_name, val_accuracy_array)
-    #
+        os.makedirs(output_folder_name)
+        # get_all_activations(x_val_data, output_folder_name)
+        tfs.get_all_activations_4layer(sess, x, keep_prob, INPUT_IMAGE_SHAPE, x_val_data, output_folder_name, h_conv1,
+                                       h_conv2,
+                                       h_conv3, h_conv4, h_conv_flat, h_fc1_drop, y_conv)
+        tfs.save_statistics(output_folder_name, val_accuracy_array)
+
     user_input = input('Export Current Model?')
     if user_input == "1" or user_input.lower() == "y":
         saver.save(sess, CHECKPOINT_FILE)

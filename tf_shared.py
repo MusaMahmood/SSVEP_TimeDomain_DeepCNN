@@ -2,6 +2,8 @@ import glob
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from functools import partial
+from operator import is_not
 from scipy.io import loadmat, savemat
 from tensorflow.python.tools import freeze_graph
 from tensorflow.python.tools import optimize_for_inference_lib
@@ -77,9 +79,17 @@ def elu_conv(x_, w_, b_, stride, padding='SAME'):
     return tf.nn.elu(x_)
 
 
+def get_tensor_shape(x_):
+    shape_as_list = x_.get_shape().as_list()
+    # filter out  'None' type:
+    shape_as_list = list(filter(None.__ne__, shape_as_list))
+    return np.asarray(shape_as_list)
+
+
 def flatten(x):
     # dimensions
-    shape = np.asarray(x.get_shape().as_list())
+    # shape = np.asarray(x.get_shape().as_list())
+    shape = get_tensor_shape(x)
     dense_shape = 1
     # check if dimension is valid before multiplying out
     for i in range(0, shape.shape[0]):
@@ -152,3 +162,54 @@ def check_prediction(y, outputs):
 
 def get_outputs(y, node_name):
     return tf.nn.softmax(y, node_name)
+
+
+# ## FOR SAVING DATA:
+def get_activations_mat(x, keep_prob, sess, layer, input_sample, input_shape):
+    units = sess.run(layer, feed_dict={x: np.reshape(input_sample, input_shape, order='F'), keep_prob: 1.0})
+    return units
+
+
+# TODO: Create custom function to take any number of layers.
+def get_all_activations_4layer(sess, x, keep_prob, input_shape, training_data, folder_name, h_conv1, h_conv2, h_conv3,
+                               h_conv4,
+                               h_conv_flat, h_fc1_drop, y_conv):
+    h_conv1_shape = get_tensor_shape(h_conv1)
+    h_conv2_shape = get_tensor_shape(h_conv2)
+    h_conv3_shape = get_tensor_shape(h_conv3)
+    h_conv4_shape = get_tensor_shape(h_conv4)
+    h_conv_flat_shape = get_tensor_shape(h_conv_flat)
+    h_fc1_drop_shape = get_tensor_shape(h_fc1_drop)
+    y_conv_shape = get_tensor_shape(y_conv)
+    # Create empty arrays
+    w_hconv1 = np.empty([0, *h_conv1_shape], np.float32)
+    w_hconv2 = np.empty([0, *h_conv2_shape], np.float32)
+    w_hconv3 = np.empty([0, *h_conv3_shape], np.float32)
+    w_hconv4 = np.empty([0, *h_conv4_shape], np.float32)
+    w_flat = np.empty([0, *h_conv_flat_shape], np.float32)
+    w_hfc1_do = np.empty([0, *h_fc1_drop_shape], np.float32)
+    w_y_out = np.empty([0, *y_conv_shape], np.float32)
+    print('Getting all Activations: please wait... ')
+    for it in range(0, training_data.shape[0]):
+        if it % 100 == 0:
+            print('Saved Sample #', it)
+        sample = training_data[it]
+        w_hconv1 = np.concatenate((w_hconv1, get_activations_mat(x, keep_prob, sess, h_conv1, sample, input_shape)),
+                                  axis=0)
+        w_hconv2 = np.concatenate((w_hconv2, get_activations_mat(x, keep_prob, sess, h_conv2, sample, input_shape)),
+                                  axis=0)
+        w_hconv3 = np.concatenate((w_hconv3, get_activations_mat(x, keep_prob, sess, h_conv3, sample, input_shape)),
+                                  axis=0)
+        w_hconv4 = np.concatenate((w_hconv4, get_activations_mat(x, keep_prob, sess, h_conv4, sample, input_shape)),
+                                  axis=0)
+        w_flat = np.concatenate((w_flat, get_activations_mat(x, keep_prob, sess, h_conv_flat, sample, input_shape)),
+                                axis=0)
+        w_hfc1_do = np.concatenate((w_hfc1_do,
+                                    get_activations_mat(x, keep_prob, sess, h_fc1_drop, sample, input_shape)), axis=0)
+        w_y_out = np.concatenate((w_y_out,
+                                  get_activations_mat(x, keep_prob, sess, y_conv, sample, input_shape)), axis=0)
+        # Save all activations:
+    fn_out = folder_name + 'all_activations.mat'
+    savemat(fn_out, mdict={'input_sample': training_data, 'h_conv1': w_hconv1, 'h_conv2': w_hconv2,
+                           'h_conv_flat': w_flat, 'h_fc1_drop': w_hfc1_do,
+                           'y_out': w_y_out})
