@@ -19,19 +19,17 @@ wlens = [128, 192, 256, 384, 512]
 w_sel = 0  # 0 -> 4
 win_len = wlens[w_sel]
 electrodes = ''
-descriptor = 'time_domain_hpf_new'  # FIXED + TRUNCATED
+input_data_descriptor = 'time_domain_hpf_new'  # FIXED + TRUNCATED
 subject_number = 8
 subject_folder = '/S' + str(subject_number)
 folder_name = ''
 
 TOTAL_DATA_CHANNELS = 2
-TRAINING_FOLDER_PATH = r'' + descriptor + subject_folder + '/' + 'w' + str(win_len)
+TRAINING_FOLDER_PATH = r'' + input_data_descriptor + subject_folder + '/' + 'w' + str(win_len)
 TEST_FOLDER_PATH = TRAINING_FOLDER_PATH + '/v'
 EXPORT_DIRECTORY = 'model_exports/'
-MODEL_NAME = 'ssvep_net_2ch' + '_S' + str(subject_number) + '_' + descriptor + '_wlen' + str(win_len)
+MODEL_NAME = 'ssvep_net_2ch' + '_S' + str(subject_number) + '_' + input_data_descriptor + '_wlen' + str(win_len)
 CHECKPOINT_FILE = EXPORT_DIRECTORY + MODEL_NAME + '.ckpt'
-TEMP_DIRECTORY = 'temp_models/'
-TEMP_CKPT_FILE = TEMP_DIRECTORY + MODEL_NAME + '.ckpt'
 
 # MATLAB DICT KEYS
 KEY_X_DATA_DICTIONARY = 'relevant_data'
@@ -46,6 +44,20 @@ INPUT_IMAGE_SHAPE = [1, TOTAL_DATA_CHANNELS, DATA_WINDOW_SIZE]
 SELECT_DATA_CHANNELS = np.asarray(range(1, TOTAL_DATA_CHANNELS + 1))
 NUMBER_DATA_CHANNELS = SELECT_DATA_CHANNELS.shape[0]  # Selects first int in shape
 
+# INFORMATION!
+NUM_LAYERS = 2
+"""
+    Options for activation are :
+    'relu'
+    'elu'
+    'leakyrelu'
+    'parametricrelu'
+"""
+activation = 'relu'
+fc_activation = 'relu'
+do = "no_dropout"
+MODEL_DESCRIPTION = 'CNN-' + str(NUM_LAYERS) + "-a." + activation
+
 # FOR MODEL DESIGN
 if w_sel == 0:
     TRAINING_TOTAL = 128000
@@ -59,7 +71,7 @@ LEARNING_RATE = 1e-3  # 1e-4  # 'Step size' on n-D optimization plane
 STRIDE_CONV2D_1 = [1, 1, 1, 1]
 alpha_c1 = 0.1
 STRIDE_CONV2D_2 = [1, 1, 1, 1]
-alpha_c2 = 0.2
+alpha_c2 = 0.1
 STRIDE_CONV2D_3 = [1, 1, 2, 1]
 alpha_c3 = 0.3
 STRIDE_CONV2D_4 = [1, 1, 2, 1]
@@ -70,10 +82,10 @@ BIAS_VAR_CL2 = 32  # Number of kernel convolutions in h_conv2
 BIAS_VAR_CL3 = 64  # Number of kernel convolutions in h_conv2
 BIAS_VAR_CL4 = 64  # Number of kernel convolutions in h_conv2
 
-WEIGHT_VAR_CL1 = [4, 1, 1, BIAS_VAR_CL1]
-WEIGHT_VAR_CL2 = [2, 2, BIAS_VAR_CL1, BIAS_VAR_CL2]
-WEIGHT_VAR_CL3 = [1, 4, BIAS_VAR_CL2, BIAS_VAR_CL3]
-WEIGHT_VAR_CL4 = [2, 2, BIAS_VAR_CL3, BIAS_VAR_CL4]
+WEIGHT_VAR_CL1 = [4, 4, 1, BIAS_VAR_CL1]
+WEIGHT_VAR_CL2 = [4, 4, BIAS_VAR_CL1, BIAS_VAR_CL2]
+WEIGHT_VAR_CL3 = [4, 4, BIAS_VAR_CL2, BIAS_VAR_CL3]
+WEIGHT_VAR_CL4 = [4, 4, BIAS_VAR_CL3, BIAS_VAR_CL4]
 
 UNITS_FC_LAYER = 1024
 
@@ -82,6 +94,7 @@ BIAS_VAR_FC1 = [UNITS_FC_LAYER]
 WEIGHT_VAR_FC_OUTPUT = [*BIAS_VAR_FC1, NUMBER_CLASSES]
 
 BIAS_VAR_FC_OUTPUT = [NUMBER_CLASSES]
+
 
 # Start Script Here:
 if not os.path.exists(EXPORT_DIRECTORY):
@@ -95,46 +108,43 @@ x = tf.placeholder(tf.float32, shape=[None, *DEFAULT_IMAGE_SHAPE], name=input_no
 keep_prob = tf.placeholder(tf.float32, name=keep_prob_node_name)
 y = tf.placeholder(tf.float32, shape=[None, NUMBER_CLASSES])
 
+# 1- Reshape Input to Default [n, x, y, 1] dimensions
 x_input = tf.reshape(x, [-1, *DEFAULT_IMAGE_SHAPE, 1])
 
 # first convolution and pooling
 W_conv1 = tfs.weight(WEIGHT_VAR_CL1)
 b_conv1 = tfs.bias([BIAS_VAR_CL1])
-h_conv1 = tfs.leaky_conv(x_input, W_conv1, b_conv1, STRIDE_CONV2D_1, alpha=alpha_c1)
+h_conv1 = tfs.conv(x_input, W_conv1, b_conv1, STRIDE_CONV2D_1, activation=activation, alpha=alpha_c1)
 
 # second convolution and pooling
 W_conv2 = tfs.weight(WEIGHT_VAR_CL2)
 b_conv2 = tfs.bias([BIAS_VAR_CL2])
-h_conv2 = tfs.leaky_conv(h_conv1, W_conv2, b_conv2, STRIDE_CONV2D_2, alpha=alpha_c2)
-
-W_conv3 = tfs.weight(WEIGHT_VAR_CL3)
-b_conv3 = tfs.bias([BIAS_VAR_CL3])
-h_conv3 = tfs.leaky_conv(h_conv2, W_conv3, b_conv3, STRIDE_CONV2D_3, alpha=alpha_c3)
-
-W_conv4 = tfs.weight(WEIGHT_VAR_CL4)
-b_conv4 = tfs.bias([BIAS_VAR_CL4])
-h_conv4 = tfs.leaky_conv(h_conv3, W_conv4, b_conv4, STRIDE_CONV2D_4, alpha=alpha_c4)
+h_conv2 = tfs.conv(h_conv1, W_conv2, b_conv2, STRIDE_CONV2D_2, activation=activation, alpha=alpha_c2)
 
 # The input should be shaped/flattened
-h_conv_flat, layer_shape = tfs.flatten(h_conv4)
+h_flat, h_flat_shape = tfs.flatten(h_conv1)
 
-# fully connected layer1,the shape of the patch should be defined
-W_fc1 = tfs.weight([layer_shape, UNITS_FC_LAYER])
+# fully connected layer,the shape of the patch should be defined
+W_fc1 = tfs.weight([h_flat_shape, UNITS_FC_LAYER])
 b_fc1 = tfs.bias(BIAS_VAR_FC1)
-h_fc1_drop = tfs.fully_connect_relu_dropout(h_conv_flat, W_fc1, b_fc1, keep_prob)
+
+if do == "no_dropout":
+    h_fc1 = tfs.fully_connect(h_flat, W_fc1, b_fc1, activation=activation)
+else:
+    h_fc1 = tfs.fully_connect_with_dropout(h_flat, W_fc1, b_fc1, keep_prob, activation=activation)
 
 # weight and bias of the output layer
 W_fco = tfs.weight(WEIGHT_VAR_FC_OUTPUT)
 b_fco = tfs.bias(BIAS_VAR_FC_OUTPUT)
-y_conv = tfs.connect(h_fc1_drop, W_fco, b_fco)
+y_conv = tfs.connect(h_fc1, W_fco, b_fco)
 
 # training and reducing the cost/loss function
 cross_entropy = tfs.loss_layer_v2(y, y_conv)
 train_step = tfs.train(LEARNING_RATE, cross_entropy)
-# Output Node and Prediction; is it correct, and accuracy
+# Output Node and Prediction; Correctness, and Accuracy
 outputs = tf.nn.softmax(y_conv, name=output_node_name)
 prediction_check, prediction = tfs.check_prediction(y, outputs)
-accuracy = tfs.get_accuracy(prediction_check)  # Float 32
+accuracy = tfs.get_accuracy(prediction_check)
 
 # Load Data:
 print('Train Folder Path: ', TRAINING_FOLDER_PATH)
@@ -144,17 +154,15 @@ x_val_data, y_val_data = tfs.load_data(TEST_FOLDER_PATH,
 # Split training set:
 x_train, x_test, y_train, y_test = train_test_split(x_data, y_data, train_size=0.75, random_state=1)
 
-# TRAIN ROUTINE #
 # Merges all summaries collected in the default graph.
 merged_summary_op = tf.summary.merge_all()
-
 saver = tf.train.Saver()  # Initialize tf Saver for model export
-
 init_op = tf.global_variables_initializer()
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 
 val_step = 0
+# TRAIN ROUTINE #
 with tf.Session(config=config) as sess:
     sess.run(init_op)
     # TODO save/restore checkpoints
@@ -163,17 +171,18 @@ with tf.Session(config=config) as sess:
     print("Model Dimensions: ")
     print("h_conv1: ", tfs.get_tensor_shape_tuple(h_conv1))
     print("h_conv2: ", tfs.get_tensor_shape_tuple(h_conv2))
-    print("h_conv3: ", tfs.get_tensor_shape_tuple(h_conv3))
-    print("h_conv4: ", tfs.get_tensor_shape_tuple(h_conv4))
-    print("h_flat: ", tfs.get_tensor_shape_tuple(h_conv_flat))
-    print("h_fc1: ", tfs.get_tensor_shape_tuple(h_fc1_drop))
+    # print("h_conv3: ", tfs.get_tensor_shape_tuple(h_conv3))
+    # print("h_conv4: ", tfs.get_tensor_shape_tuple(h_conv4))
+    print("h_flat: ", tfs.get_tensor_shape_tuple(h_flat))
+    print("h_fc1: ", tfs.get_tensor_shape_tuple(h_fc1))
     print("y_conv: ", tfs.get_tensor_shape_tuple(y_conv))
     print(":")
     print("Filter Dimensions:")
     print("h_c1_filt: ", WEIGHT_VAR_CL1[0:2], " stride: ", STRIDE_CONV2D_1[1:3], " alpha=", alpha_c1)
     print("h_c2_filt: ", WEIGHT_VAR_CL2[0:2], " stride: ", STRIDE_CONV2D_2[1:3], " alpha=", alpha_c2)
-    print("h_c3_filt: ", WEIGHT_VAR_CL3[0:2], " stride: ", STRIDE_CONV2D_3[1:3], " alpha=", alpha_c3)
-    print("h_c4_filt: ", WEIGHT_VAR_CL4[0:2], " stride: ", STRIDE_CONV2D_4[1:3], " alpha=", alpha_c4)
+    # print("h_c3_filt: ", WEIGHT_VAR_CL3[0:2], " stride: ", STRIDE_CONV2D_3[1:3], " alpha=", alpha_c3)
+    # print("h_c4_filt: ", WEIGHT_VAR_CL4[0:2], " stride: ", STRIDE_CONV2D_4[1:3], " alpha=", alpha_c4)
+    print(":")
 
     # save model as pbtxt:
     tf.train.write_graph(sess.graph_def, EXPORT_DIRECTORY, MODEL_NAME + '.pbtxt', True)
@@ -228,12 +237,12 @@ with tf.Session(config=config) as sess:
             EXPORT_DIRECTORY + 'S' + str(subject_number) + \
             'feature_maps_' + TIMESTAMP_START + '_wlen' + str(DATA_WINDOW_SIZE) + '/'
         os.makedirs(output_folder_name)
-        tfs.get_all_activations_4layer(sess, x, keep_prob, INPUT_IMAGE_SHAPE, x_val_data, output_folder_name, h_conv1,
-                                       h_conv2, h_conv3, h_conv4, h_conv_flat, h_fc1_drop, y_conv)
-        tfs.save_statistics(output_folder_name, val_accuracy_array)
+        # tfs.get_all_activations_4layer(sess, x, keep_prob, INPUT_IMAGE_SHAPE, x_val_data, output_folder_name, h_conv1,
+        #                                h_conv2, h_conv3, h_conv4, h_flat, h_fc1, y_conv)
+        tfs.save_statistics(output_folder_name, val_accuracy_array, MODEL_DESCRIPTION)
 
-    user_input = input('Export Current Model?')
-    if user_input == "1" or user_input.lower() == "y":
-        saver.save(sess, CHECKPOINT_FILE)
-        # export_model([input_node_name, keep_prob_node_name], output_node_name)
-        tfs.export_model([input_node_name, keep_prob_node_name], output_node_name, EXPORT_DIRECTORY, MODEL_NAME)
+    # user_input = input('Export Current Model?')
+    # if user_input == "1" or user_input.lower() == "y":
+    #     saver.save(sess, CHECKPOINT_FILE)
+    #     # export_model([input_node_name, keep_prob_node_name], output_node_name)
+    #     tfs.export_model([input_node_name, keep_prob_node_name], output_node_name, EXPORT_DIRECTORY, MODEL_NAME)

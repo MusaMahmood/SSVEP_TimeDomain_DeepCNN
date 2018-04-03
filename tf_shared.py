@@ -2,8 +2,6 @@ import glob
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from functools import partial
-from operator import is_not
 from scipy.io import loadmat, savemat
 from tensorflow.python.tools import freeze_graph
 from tensorflow.python.tools import optimize_for_inference_lib
@@ -44,8 +42,8 @@ def export_model(input_node_names, output_node_name_internal, export_dir, model_
     print("2 - Android Optimized Model:", export_dir + '/opt_' + model_name + '.pb')
 
 
-def save_statistics(folder_name, val_acc, file_name='stats.mat'):
-    savemat(folder_name + file_name, mdict={'training_rate': val_acc})
+def save_statistics(folder_name, val_acc, details, file_name='stats.mat'):
+    savemat(folder_name + file_name, mdict={'training_rate': val_acc, 'details': details})
 
 
 # Model Building Macros: #
@@ -59,8 +57,21 @@ def bias(shape):
     return tf.Variable(initial)
 
 
+def conv(x_, w_, b_, stride=list([1, 1, 1, 1]), activation='relu', padding='SAME', alpha=0.01):
+    x_ = tf.nn.conv2d(x_, w_, strides=stride, padding=padding)
+    x_ = tf.nn.bias_add(x_, b_)
+    if activation == 'relu':
+        return tf.nn.relu(x_)
+    elif activation == 'elu':
+        return tf.nn.elu(x_)
+    elif activation == 'leakyrelu':
+        return tf.nn.leaky_relu(x_, alpha=0.01)
+    elif activation == 'parametricrelu':
+        return tf.nn.leaky_relu(x_, alpha=alpha)
+
+
 # Convolution and max-pooling functions
-def conv(x_, w_, b_, stride, padding='SAME'):
+def relu_conv(x_, w_, b_, stride, padding='SAME'):
     # INPUT: [batch, in_height, in_width, in_channels]
     x_ = tf.nn.conv2d(x_, w_, strides=stride, padding=padding)
     x_ = tf.nn.bias_add(x_, b_)
@@ -77,6 +88,12 @@ def elu_conv(x_, w_, b_, stride, padding='SAME'):
     x_ = tf.nn.conv2d(x_, w_, strides=stride, padding=padding)
     x_ = tf.nn.bias_add(x_, b_)
     return tf.nn.elu(x_)
+
+
+def get_tensor_shape_tuple(x_):
+    shape_as_list = x_.get_shape().as_list()
+    shape_as_list = list(filter(None.__ne__, shape_as_list))
+    return tuple([1, *shape_as_list])
 
 
 def get_tensor_shape(x_):
@@ -107,15 +124,44 @@ def max_pool_valid(x_, ksize, stride):
     return tf.nn.max_pool(x_, ksize=ksize, strides=stride, padding='VALID')
 
 
+def fully_connect_with_dropout(x, w, b, keep_prob, activation='relu'):
+    return tf.nn.dropout(fully_connect(x, w, b, activation=activation), keep_prob=keep_prob)
+
+
 def fully_connect_elu_dropout(x, w, b, keep_prob):
+    """
+    DEPRECATED - USE fully_connect_with_dropout(x, w, b, keep_prob, activation=...)
+    :param x:
+    :param w:
+    :param b:
+    :param keep_prob:
+    :return:
+    """
     return tf.nn.dropout(fully_connect(x, w, b, activation='elu'), keep_prob=keep_prob)
 
 
 def fully_connect_relu_dropout(x, w, b, keep_prob):
+    """
+    DEPRECATED - USE fully_connect_with_dropout(x, w, b, keep_prob, activation=...)
+    :param x:
+    :param w:
+    :param b:
+    :param keep_prob:
+    :return:
+    """
     return tf.nn.dropout(fully_connect(x, w, b, activation='relu'), keep_prob=keep_prob)
 
 
 def fully_connect_leakyrelu_dropout(x, w, b, keep_prob, alpha=0.01):
+    """
+    DEPRECATED - USE fully_connect_with_dropout(x, w, b, keep_prob, activation=...)
+    :param x:
+    :param w:
+    :param b:
+    :param keep_prob:
+    :param alpha:
+    :return:
+    """
     return tf.nn.dropout(fully_connect(x, w, b, 'leakyrelu', alpha=alpha), keep_prob=keep_prob)
 
 
@@ -126,6 +172,8 @@ def fully_connect(x, w, b, activation='relu', alpha=0.01):
     elif activation == 'elu':
         return tf.nn.elu(connect(x, w, b))
     elif activation == 'leakyrelu':
+        return tf.nn.leaky_relu(connect(x, w, b), alpha=0.01)
+    elif activation == 'parametricrelu':
         return tf.nn.leaky_relu(connect(x, w, b), alpha=alpha)
 
 
@@ -211,5 +259,5 @@ def get_all_activations_4layer(sess, x, keep_prob, input_shape, training_data, f
         # Save all activations:
     fn_out = folder_name + 'all_activations.mat'
     savemat(fn_out, mdict={'input_sample': training_data, 'h_conv1': w_hconv1, 'h_conv2': w_hconv2,
-                           'h_conv_flat': w_flat, 'h_fc1_drop': w_hfc1_do,
+                           'h_flat': w_flat, 'h_fc1': w_hfc1_do,
                            'y_out': w_y_out})
