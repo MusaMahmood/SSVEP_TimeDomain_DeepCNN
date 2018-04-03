@@ -2,9 +2,14 @@ import glob
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import time
 from scipy.io import loadmat, savemat
 from tensorflow.python.tools import freeze_graph
 from tensorflow.python.tools import optimize_for_inference_lib
+
+
+def current_time_ms():
+    return int(round(time.time() * 1000))
 
 
 # Load Data:
@@ -42,8 +47,8 @@ def export_model(input_node_names, output_node_name_internal, export_dir, model_
     print("2 - Android Optimized Model:", export_dir + '/opt_' + model_name + '.pb')
 
 
-def save_statistics(folder_name, val_acc, details, file_name='stats.mat'):
-    savemat(folder_name + file_name, mdict={'training_rate': val_acc, 'details': details})
+def save_statistics(folder_name, val_acc, details, info, file_name='stats.mat'):
+    savemat(folder_name + file_name, mdict={'training_rate': val_acc, 'details': details, 'info': info})
 
 
 # Model Building Macros: #
@@ -58,6 +63,13 @@ def bias(shape):
 
 
 def conv(x_, w_, b_, stride=list([1, 1, 1, 1]), activation='relu', padding='SAME', alpha=0.01):
+    """
+        Options for activation are :
+        'relu'
+        'elu'
+        'leakyrelu'
+        'parametricrelu'
+    """
     x_ = tf.nn.conv2d(x_, w_, strides=stride, padding=padding)
     x_ = tf.nn.bias_add(x_, b_)
     if activation == 'relu':
@@ -124,8 +136,8 @@ def max_pool_valid(x_, ksize, stride):
     return tf.nn.max_pool(x_, ksize=ksize, strides=stride, padding='VALID')
 
 
-def fully_connect_with_dropout(x, w, b, keep_prob, activation='relu'):
-    return tf.nn.dropout(fully_connect(x, w, b, activation=activation), keep_prob=keep_prob)
+def fully_connect_with_dropout(x, w, b, keep_prob, activation='relu', alpha=0.01):
+    return tf.nn.dropout(fully_connect(x, w, b, activation=activation, alpha=alpha), keep_prob=keep_prob)
 
 
 def fully_connect_elu_dropout(x, w, b, keep_prob):
