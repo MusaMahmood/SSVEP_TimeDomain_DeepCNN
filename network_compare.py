@@ -57,8 +57,8 @@ fc_activation = 'relu'
 alpha_fc = 0.01
 alpha_conv = 0.5
 
-do = "dropout"  # dropout or no-dropout
-# do = "no-dropout"  # dropout or no-dropout
+# do = "dropout"  # dropout or no-dropout
+do = "no-dropout"  # dropout or no-dropout
 
 # FOR MODEL DESIGN
 TRAINING_TOTAL = 256000
@@ -68,22 +68,25 @@ TEST_BATCH_SIZE = 100
 LR_EXP = 3
 LR_COEFF = 1.0
 LEARNING_RATE = LR_COEFF * float(10.0 ** (-float(LR_EXP)))
-NUM_LAYERS = 4
+NUM_LAYERS = 1
 
 STRIDE_CONV2D_1 = [1, 1, 1, 1]
 STRIDE_CONV2D_2 = [1, 1, 1, 1]
 STRIDE_CONV2D_3 = [1, 1, 1, 1]
 STRIDE_CONV2D_4 = [1, 1, 1, 1]
+STRIDE_CONV2D_5 = [1, 1, 1, 1]
 
-BIAS_VAR_CL1 = 32  # Number of kernel convolutions in h_conv1
-BIAS_VAR_CL2 = 32  # Number of kernel convolutions in h_conv2
-BIAS_VAR_CL3 = 64  # Number of kernel convolutions in h_conv2
-BIAS_VAR_CL4 = 64  # Number of kernel convolutions in h_conv2
+BIAS_VAR_CL1 = 32
+BIAS_VAR_CL2 = 32
+BIAS_VAR_CL3 = 64
+BIAS_VAR_CL4 = 64
+BIAS_VAR_CL5 = 64
 
 WEIGHT_VAR_CL1 = [4, 4, 1, BIAS_VAR_CL1]
 WEIGHT_VAR_CL2 = [4, 4, BIAS_VAR_CL1, BIAS_VAR_CL2]
 WEIGHT_VAR_CL3 = [4, 4, BIAS_VAR_CL2, BIAS_VAR_CL3]
 WEIGHT_VAR_CL4 = [4, 4, BIAS_VAR_CL3, BIAS_VAR_CL4]
+WEIGHT_VAR_CL5 = [4, 4, BIAS_VAR_CL4, BIAS_VAR_CL5]
 
 UNITS_FC_LAYER = 1024
 
@@ -121,26 +124,24 @@ y = tf.placeholder(tf.float32, shape=[None, NUMBER_CLASSES])
 # 1- Reshape Input to Default [n, x, y, 1] dimensions
 x_input = tf.reshape(x, [-1, *DEFAULT_IMAGE_SHAPE, 1])
 
-# first convolution and pooling
 W_conv1 = tfs.weight(WEIGHT_VAR_CL1)
 b_conv1 = tfs.bias([BIAS_VAR_CL1])
 h_conv1 = tfs.conv(x_input, W_conv1, b_conv1, STRIDE_CONV2D_1, activation=activation, alpha=alpha_conv)
 
-# second convolution and pooling
-W_conv2 = tfs.weight(WEIGHT_VAR_CL2)
-b_conv2 = tfs.bias([BIAS_VAR_CL2])
-h_conv2 = tfs.conv(h_conv1, W_conv2, b_conv2, STRIDE_CONV2D_2, activation=activation, alpha=alpha_conv)
-
-W_conv3 = tfs.weight(WEIGHT_VAR_CL3)
-b_conv3 = tfs.bias([BIAS_VAR_CL3])
-h_conv3 = tfs.conv(h_conv2, W_conv3, b_conv3, STRIDE_CONV2D_3, activation=activation, alpha=alpha_conv)
-
-W_conv4 = tfs.weight(WEIGHT_VAR_CL4)
-b_conv4 = tfs.bias([BIAS_VAR_CL4])
-h_conv4 = tfs.conv(h_conv3, W_conv4, b_conv4, STRIDE_CONV2D_4, activation=activation, alpha=alpha_conv)
+# W_conv2 = tfs.weight(WEIGHT_VAR_CL2)
+# b_conv2 = tfs.bias([BIAS_VAR_CL2])
+# h_conv2 = tfs.conv(h_conv1, W_conv2, b_conv2, STRIDE_CONV2D_2, activation=activation, alpha=alpha_conv)
+#
+# W_conv3 = tfs.weight(WEIGHT_VAR_CL3)
+# b_conv3 = tfs.bias([BIAS_VAR_CL3])
+# h_conv3 = tfs.conv(h_conv2, W_conv3, b_conv3, STRIDE_CONV2D_3, activation=activation, alpha=alpha_conv)
+#
+# W_conv4 = tfs.weight(WEIGHT_VAR_CL4)
+# b_conv4 = tfs.bias([BIAS_VAR_CL4])
+# h_conv4 = tfs.conv(h_conv3, W_conv4, b_conv4, STRIDE_CONV2D_4, activation=activation, alpha=alpha_conv)
 
 # The input should be shaped/flattened
-h_flat, h_flat_shape = tfs.flatten(h_conv4)
+h_flat, h_flat_shape = tfs.flatten(h_conv1)
 
 # fully connected layer,the shape of the patch should be defined
 W_fc1 = tfs.weight([h_flat_shape, UNITS_FC_LAYER])
@@ -229,12 +230,12 @@ with tf.Session(config=config) as sess:
         train_step.run(feed_dict={x: batch_x_train, y: batch_y_train, keep_prob: 0.5})
     FINISH_TIME_MS = tfs.current_time_ms()  # FINISH TRAINING TIMER
     # Run test data (entire set) to see accuracy.
-    test_accuracy = sess.run(accuracy, feed_dict={x: x_test, y: y_test, keep_prob: 1.0})  # original
-    print("\n Testing Accuracy:", test_accuracy, "\n\n")
+    test_accuracy_split = sess.run(accuracy, feed_dict={x: x_test, y: y_test, keep_prob: 1.0})  # original
+    print("\n Testing Accuracy:", test_accuracy_split, "\n\n")
 
+    test_accuracy_validation = sess.run(accuracy, feed_dict={x: x_val_data, y: y_val_data, keep_prob: 1.0})
     # Holdout Validation Accuracy:
-    result_string = "\n Holdout Validation:" \
-                    + str(sess.run(accuracy, feed_dict={x: x_val_data, y: y_val_data, keep_prob: 1.0}))
+    result_string = "\n Holdout Validation:" + str(test_accuracy_validation)
     print(result_string)
     print('\n elapsed time: ', str((FINISH_TIME_MS - START_TIME_MS) / 1000.0) + ' s')
     y_val_tf = np.zeros([x_val_data.shape[0]], dtype=np.int32)
@@ -251,6 +252,7 @@ with tf.Session(config=config) as sess:
     print(tf.Tensor.eval(tf_confusion_matrix, feed_dict=None, session=None))  # 'Confusion Matrix: \n\n',
 
     ws.Beep(900, 1000)
+    ELAPSED_TIME_TRAIN = FINISH_TIME_MS - START_TIME_MS
     # Save Data:
     INFO = "h_c1_filt: " + str(WEIGHT_VAR_CL1[0:2]) + " stride: " + str(STRIDE_CONV2D_1[1:3]) + " alpha=" + str(
         alpha_conv) + "\n" + \
@@ -260,12 +262,14 @@ with tf.Session(config=config) as sess:
         alpha_conv) + "\n" + \
            "h_c4_filt: " + str(WEIGHT_VAR_CL4[0:2]) + " stride: " + str(STRIDE_CONV2D_4[1:3]) + " alpha=" + str(
         alpha_conv) + "\n" + "alphafc=" + str(alpha_fc) + '\n' + result_string + '\n' + \
-           'elapsed time (ms):' + str(FINISH_TIME_MS - START_TIME_MS)
+           'elapsed time (ms):' + str(ELAPSED_TIME_TRAIN)
+
     output_folder_name = EXPORT_DIRECTORY + 'S' + str(subject_number) + '_wlen' + str(DATA_WINDOW_SIZE) + '/'
     if not os.path.exists(output_folder_name):
         os.makedirs(output_folder_name)
     stat_fn = 'stats_' + MODEL_DESCRIPTION + '.mat'
-    tfs.save_statistics(output_folder_name, val_accuracy_array, MODEL_DESCRIPTION, INFO, stat_fn)
+    tfs.save_statistics(output_folder_name, val_accuracy_array, MODEL_DESCRIPTION, INFO, ELAPSED_TIME_TRAIN,
+                        test_accuracy_validation, stat_fn)
 
     # tfs.get_all_activations_4layer(sess, x, keep_prob, INPUT_IMAGE_SHAPE, x_val_data, output_folder_name, h_conv1,
     #                                h_conv2, h_conv3, h_conv4, h_flat, h_fc1, y_conv)

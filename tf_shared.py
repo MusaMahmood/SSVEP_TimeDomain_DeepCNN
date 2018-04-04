@@ -47,8 +47,9 @@ def export_model(input_node_names, output_node_name_internal, export_dir, model_
     print("2 - Android Optimized Model:", export_dir + '/opt_' + model_name + '.pb')
 
 
-def save_statistics(folder_name, val_acc, details, info, file_name='stats.mat'):
-    savemat(folder_name + file_name, mdict={'training_rate': val_acc, 'details': details, 'info': info})
+def save_statistics(folder_name, val_acc, details, info, elapsed_time, test_accuracy, file_name='stats.mat'):
+    savemat(folder_name + file_name, mdict={'training_rate': val_acc, 'details': details, 'info': info,
+                                            'elapsed_time': elapsed_time, 'test_accuracy': test_accuracy})
 
 
 # Model Building Macros: #
