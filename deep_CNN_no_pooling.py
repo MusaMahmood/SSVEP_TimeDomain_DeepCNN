@@ -126,7 +126,7 @@ def get_all_activations(training_data, folder_name0):
         # Save all activations:
     fn_out = folder_name0 + 'all_activations.mat'
     savemat(fn_out, mdict={'input_sample': training_data, 'h_conv1': w_hconv1, 'h_conv2': w_hconv2,
-                           'h_conv_flat': w_hconv4_flat, 'h_fc1_drop': w_hfc1_do,
+                           'h_flat': w_hconv4_flat, 'h_fc1': w_hfc1_do,
                            'y_out': w_y_out})
 
 
@@ -157,7 +157,7 @@ b_conv4 = tfs.bias([BIAS_VAR_CL4])
 h_conv4 = tfs.leaky_conv(h_conv3, W_conv4, b_conv4, STRIDE_CONV2D_4, alpha=alpha_c4)
 
 # the input should be shaped/flattened
-# h_conv_flat = tf.reshape(h_conv4, MAX_POOL_FLAT_SHAPE_FC1)
+# h_flat = tf.reshape(h_conv4, MAX_POOL_FLAT_SHAPE_FC1)
 h_conv_flat, layer_shape = tfs.flatten(h_conv4)
 
 # fully connected layer1,the shape of the patch should be defined
@@ -165,14 +165,13 @@ h_conv_flat, layer_shape = tfs.flatten(h_conv4)
 W_fc1 = tfs.weight([layer_shape, UNITS_FC_LAYER])
 b_fc1 = tfs.bias(BIAS_VAR_FC1)
 
-# h_fc1 = tf.nn.relu(tf.add(tf.matmul(h_conv_flat, W_fc1), b_fc1))
-h_fc1_drop = tfs.fully_connect_relu_dropout(h_conv_flat, W_fc1, b_fc1, keep_prob)
+h_fc1_drop = tfs.fully_connect_with_dropout(h_conv_flat, W_fc1, b_fc1, keep_prob, activation='relu')
 
 # weight and bias of the output layer
 W_fco = tfs.weight(WEIGHT_VAR_FC_OUTPUT)
 b_fco = tfs.bias(BIAS_VAR_FC_OUTPUT)
 
-# y_conv = tf.add(tf.matmul(h_fc1_drop, W_fco), b_fco)
+# y_conv = tf.add(tf.matmul(h_fc1, W_fco), b_fco)
 y_conv = tfs.connect(h_fc1_drop, W_fco, b_fco)
 
 # training and reducing the cost/loss function
@@ -230,8 +229,8 @@ with tf.Session(config=config) as sess:
     print("h_conv2: ", h_conv2_shape)
     print("h_conv3: ", h_conv3_shape)
     print("h_conv4: ", h_conv4_shape)
-    print("h_conv_flat: ", h_conv_flat_shape)
-    print("h_fc1_drop: ", h_fc1_drop_shape)
+    print("h_flat: ", h_conv_flat_shape)
+    print("h_fc1: ", h_fc1_drop_shape)
     print("y_conv: ", y_conv_shape)
 
     # save model as pbtxt:

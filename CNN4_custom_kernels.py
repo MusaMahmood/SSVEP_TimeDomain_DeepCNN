@@ -121,7 +121,7 @@ h_conv_flat, layer_shape = tfs.flatten(h_conv4)
 # fully connected layer1,the shape of the patch should be defined
 W_fc1 = tfs.weight([layer_shape, UNITS_FC_LAYER])
 b_fc1 = tfs.bias(BIAS_VAR_FC1)
-h_fc1_drop = tfs.fully_connect_relu_dropout(h_conv_flat, W_fc1, b_fc1, keep_prob)
+h_fc1_drop = tfs.fully_connect_with_dropout(h_conv_flat, W_fc1, b_fc1, keep_prob, activation='relu')
 
 # weight and bias of the output layer
 W_fco = tfs.weight(WEIGHT_VAR_FC_OUTPUT)

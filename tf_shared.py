@@ -140,43 +140,6 @@ def fully_connect_with_dropout(x, w, b, keep_prob, activation='relu', alpha=0.01
     return tf.nn.dropout(fully_connect(x, w, b, activation=activation, alpha=alpha), keep_prob=keep_prob)
 
 
-def fully_connect_elu_dropout(x, w, b, keep_prob):
-    """
-    DEPRECATED - USE fully_connect_with_dropout(x, w, b, keep_prob, activation=...)
-    :param x:
-    :param w:
-    :param b:
-    :param keep_prob:
-    :return:
-    """
-    return tf.nn.dropout(fully_connect(x, w, b, activation='elu'), keep_prob=keep_prob)
-
-
-def fully_connect_relu_dropout(x, w, b, keep_prob):
-    """
-    DEPRECATED - USE fully_connect_with_dropout(x, w, b, keep_prob, activation=...)
-    :param x:
-    :param w:
-    :param b:
-    :param keep_prob:
-    :return:
-    """
-    return tf.nn.dropout(fully_connect(x, w, b, activation='relu'), keep_prob=keep_prob)
-
-
-def fully_connect_leakyrelu_dropout(x, w, b, keep_prob, alpha=0.01):
-    """
-    DEPRECATED - USE fully_connect_with_dropout(x, w, b, keep_prob, activation=...)
-    :param x:
-    :param w:
-    :param b:
-    :param keep_prob:
-    :param alpha:
-    :return:
-    """
-    return tf.nn.dropout(fully_connect(x, w, b, 'leakyrelu', alpha=alpha), keep_prob=keep_prob)
-
-
 # For a relu activated FC
 def fully_connect(x, w, b, activation='relu', alpha=0.01):
     if activation == 'relu':
