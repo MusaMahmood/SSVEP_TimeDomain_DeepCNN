@@ -1,7 +1,6 @@
 # MUSA MAHMOOD; DEOGRATIAS MZURIKWAO - Copyright 2018
 # Python 3.6.1
 # TF 1.5.0
-# SEE PAPER ON DEEP CNN WITH NO MAX POOLING
 
 # IMPORTS:
 import tensorflow as tf
@@ -52,13 +51,14 @@ NUMBER_DATA_CHANNELS = SELECT_DATA_CHANNELS.shape[0]  # Selects first int in sha
     'leakyrelu'
     'parametricrelu'
 """
-activation = 'parametricrelu'
+activation = 'relu'
 fc_activation = 'relu'
 alpha_fc = 0.01
-alpha_conv = 0.5
+alpha_conv = 0.1
 
-# do = "dropout"  # dropout or no-dropout
-do = "no-dropout"  # dropout or no-dropout
+do = "dropout"  # dropout or no-dropout
+KEEP_PROB = 0.5
+# do = "no-dropout"  # dropout or no-dropout
 
 # FOR MODEL DESIGN
 TRAINING_TOTAL = 256000
@@ -66,8 +66,8 @@ TRAIN_BATCH_SIZE = 64
 NUMBER_STEPS = TRAINING_TOTAL // TRAIN_BATCH_SIZE
 TEST_BATCH_SIZE = 100
 LR_EXP = 3
-LR_COEFF = 1.0
-LEARNING_RATE = LR_COEFF * float(10.0 ** (-float(LR_EXP)))
+LR_COEFF = 1
+LEARNING_RATE = float(LR_COEFF) * float(10.0 ** (-float(LR_EXP)))
 NUM_LAYERS = 1
 
 STRIDE_CONV2D_1 = [1, 1, 1, 1]
@@ -78,9 +78,9 @@ STRIDE_CONV2D_5 = [1, 1, 1, 1]
 
 BIAS_VAR_CL1 = 32
 BIAS_VAR_CL2 = 32
-BIAS_VAR_CL3 = 64
-BIAS_VAR_CL4 = 64
-BIAS_VAR_CL5 = 64
+BIAS_VAR_CL3 = 32
+BIAS_VAR_CL4 = 32
+BIAS_VAR_CL5 = 32
 
 WEIGHT_VAR_CL1 = [4, 4, 1, BIAS_VAR_CL1]
 WEIGHT_VAR_CL2 = [4, 4, BIAS_VAR_CL1, BIAS_VAR_CL2]
@@ -88,26 +88,21 @@ WEIGHT_VAR_CL3 = [4, 4, BIAS_VAR_CL2, BIAS_VAR_CL3]
 WEIGHT_VAR_CL4 = [4, 4, BIAS_VAR_CL3, BIAS_VAR_CL4]
 WEIGHT_VAR_CL5 = [4, 4, BIAS_VAR_CL4, BIAS_VAR_CL5]
 
-UNITS_FC_LAYER = 1024
+UNITS_FC_LAYER = 4096
 
-BIAS_VAR_FC1 = [UNITS_FC_LAYER]
-
-WEIGHT_VAR_FC_OUTPUT = [*BIAS_VAR_FC1, NUMBER_CLASSES]
-
+WEIGHT_VAR_FC_OUTPUT = [UNITS_FC_LAYER, NUMBER_CLASSES]
 BIAS_VAR_FC_OUTPUT = [NUMBER_CLASSES]
 
-if activation == 'parametricrelu' and fc_activation == 'parametricrelu':
-    MODEL_DESCRIPTION = 'CNN-' + str(NUM_LAYERS) + "-a." + activation + '.alpha-' + str(alpha_conv) + '-' + do \
-                        + '-fc.' + fc_activation + '.alpha-' + str(alpha_fc) + '-lr.1e-' + str(LR_EXP)
-elif activation == 'parametricrelu':
-    MODEL_DESCRIPTION = 'CNN-' + str(NUM_LAYERS) + "-a." + activation + '.alpha-' + str(alpha_conv) + '-' + do \
-                        + '-fc.' + fc_activation + '-lr.1e-' + str(LR_EXP)
-elif fc_activation == 'parametricrelu':
-    MODEL_DESCRIPTION = 'CNN-' + str(NUM_LAYERS) + "-a." + activation + '-' + do + '-fc.' \
-                        + fc_activation + '.alpha-' + str(alpha_fc) + '-lr.1e-' + str(LR_EXP)
-else:
-    MODEL_DESCRIPTION = 'CNN-' + str(NUM_LAYERS) + "-a." + activation + '-' + do + '-fc.' + fc_activation \
-                        + '-lr.1e-' + str(LR_EXP)
+MODEL_DESCRIPTION = 'CNN-' + str(NUM_LAYERS) + "-a." + activation
+if activation == 'parametricrelu':
+    MODEL_DESCRIPTION += '.' + str(alpha_conv)
+if do == 'dropout':
+    MODEL_DESCRIPTION += '-drop' + str(KEEP_PROB)
+# FC Layer (all)
+MODEL_DESCRIPTION += '-fc.' + str(UNITS_FC_LAYER) + '.' + fc_activation
+if fc_activation == 'parametricrelu':
+    MODEL_DESCRIPTION += '.' + str(alpha_fc)
+MODEL_DESCRIPTION += '-lr.' + str(LR_COEFF) + 'e-' + str(LR_EXP)
 
 # Start Script Here:
 if not os.path.exists(EXPORT_DIRECTORY):
@@ -124,36 +119,27 @@ y = tf.placeholder(tf.float32, shape=[None, NUMBER_CLASSES])
 # 1- Reshape Input to Default [n, x, y, 1] dimensions
 x_input = tf.reshape(x, [-1, *DEFAULT_IMAGE_SHAPE, 1])
 
-W_conv1 = tfs.weight(WEIGHT_VAR_CL1)
-b_conv1 = tfs.bias([BIAS_VAR_CL1])
+W_conv1, b_conv1 = tfs.var_weight_bias(WEIGHT_VAR_CL1, [BIAS_VAR_CL1])
 h_conv1 = tfs.conv(x_input, W_conv1, b_conv1, STRIDE_CONV2D_1, activation=activation, alpha=alpha_conv)
-
-# W_conv2 = tfs.weight(WEIGHT_VAR_CL2)
-# b_conv2 = tfs.bias([BIAS_VAR_CL2])
+# W_conv2, b_conv2 = tfs.var_weight_bias(WEIGHT_VAR_CL2, [BIAS_VAR_CL2])
 # h_conv2 = tfs.conv(h_conv1, W_conv2, b_conv2, STRIDE_CONV2D_2, activation=activation, alpha=alpha_conv)
-#
-# W_conv3 = tfs.weight(WEIGHT_VAR_CL3)
-# b_conv3 = tfs.bias([BIAS_VAR_CL3])
+# W_conv3, b_conv3 = tfs.var_weight_bias(WEIGHT_VAR_CL3, [BIAS_VAR_CL3])
 # h_conv3 = tfs.conv(h_conv2, W_conv3, b_conv3, STRIDE_CONV2D_3, activation=activation, alpha=alpha_conv)
-#
-# W_conv4 = tfs.weight(WEIGHT_VAR_CL4)
-# b_conv4 = tfs.bias([BIAS_VAR_CL4])
+# W_conv4, b_conv4 = tfs.var_weight_bias(WEIGHT_VAR_CL4, [BIAS_VAR_CL4])
 # h_conv4 = tfs.conv(h_conv3, W_conv4, b_conv4, STRIDE_CONV2D_4, activation=activation, alpha=alpha_conv)
 
 # The input should be shaped/flattened
 h_flat, h_flat_shape = tfs.flatten(h_conv1)
 
 # fully connected layer,the shape of the patch should be defined
-W_fc1 = tfs.weight([h_flat_shape, UNITS_FC_LAYER])
-b_fc1 = tfs.bias(BIAS_VAR_FC1)
+W_fc1, b_fc1 = tfs.var_weight_bias([h_flat_shape, UNITS_FC_LAYER], [UNITS_FC_LAYER])
 if do == "no-dropout":
     h_fc1 = tfs.fully_connect(h_flat, W_fc1, b_fc1, activation=fc_activation, alpha=alpha_fc)
 else:
     h_fc1 = tfs.fully_connect_with_dropout(h_flat, W_fc1, b_fc1, keep_prob, activation=fc_activation, alpha=alpha_fc)
 
 # weight and bias of the output layer
-W_fco = tfs.weight(WEIGHT_VAR_FC_OUTPUT)
-b_fco = tfs.bias(BIAS_VAR_FC_OUTPUT)
+W_fco, b_fco = tfs.var_weight_bias(WEIGHT_VAR_FC_OUTPUT, BIAS_VAR_FC_OUTPUT)
 y_conv = tfs.connect(h_fc1, W_fco, b_fco)
 
 # training and reducing the cost/loss function
@@ -227,7 +213,7 @@ with tf.Session(config=config) as sess:
             val_accuracy_array[val_step, 1] = val_accuracy
             val_step += 1
 
-        train_step.run(feed_dict={x: batch_x_train, y: batch_y_train, keep_prob: 0.5})
+        train_step.run(feed_dict={x: batch_x_train, y: batch_y_train, keep_prob: KEEP_PROB})
     FINISH_TIME_MS = tfs.current_time_ms()  # FINISH TRAINING TIMER
     # Run test data (entire set) to see accuracy.
     test_accuracy_split = sess.run(accuracy, feed_dict={x: x_test, y: y_test, keep_prob: 1.0})  # original
@@ -276,5 +262,4 @@ with tf.Session(config=config) as sess:
     # user_input = input('Export Current Model?')
     # if user_input == "1" or user_input.lower() == "y":
     #     saver.save(sess, CHECKPOINT_FILE)
-    #     # export_model([input_node_name, keep_prob_node_name], output_node_name)
     #     tfs.export_model([input_node_name, keep_prob_node_name], output_node_name, EXPORT_DIRECTORY, MODEL_NAME)

@@ -52,6 +52,12 @@ def save_statistics(folder_name, val_acc, details, info, elapsed_time, test_accu
                                             'elapsed_time': elapsed_time, 'test_accuracy': test_accuracy})
 
 
+def var_weight_bias(w_shape, b_shape):
+    w = tf.Variable(tf.truncated_normal(w_shape, stddev=0.1))
+    b = tf.Variable(tf.constant(0.1, shape=b_shape))
+    return w, b
+
+
 # Model Building Macros: #
 def weight(shape):
     initial = tf.truncated_normal(shape, stddev=0.1)
