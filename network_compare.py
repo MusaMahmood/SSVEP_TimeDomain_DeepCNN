@@ -51,14 +51,14 @@ NUMBER_DATA_CHANNELS = SELECT_DATA_CHANNELS.shape[0]  # Selects first int in sha
     'leakyrelu'
     'parametricrelu'
 """
-activation = 'relu'
+activation = 'parametricrelu'
+conv_alpha = 0.5
+
 fc_activation = 'relu'
-alpha_fc = 0.01
-alpha_conv = 0.1
+fc_alpha = 0.01
 
 do = "dropout"  # dropout or no-dropout
 KEEP_PROB = 0.5
-# do = "no-dropout"  # dropout or no-dropout
 
 # FOR MODEL DESIGN
 TRAINING_TOTAL = 256000
@@ -68,41 +68,45 @@ TEST_BATCH_SIZE = 100
 LR_EXP = 3
 LR_COEFF = 1
 LEARNING_RATE = float(LR_COEFF) * float(10.0 ** (-float(LR_EXP)))
-NUM_LAYERS = 1
+
+NUM_LAYERS = 4
 
 STRIDE_CONV2D_1 = [1, 1, 1, 1]
 STRIDE_CONV2D_2 = [1, 1, 1, 1]
 STRIDE_CONV2D_3 = [1, 1, 1, 1]
 STRIDE_CONV2D_4 = [1, 1, 1, 1]
 STRIDE_CONV2D_5 = [1, 1, 1, 1]
+STRIDE_CONV2D_6 = [1, 1, 1, 1]
 
-BIAS_VAR_CL1 = 32
-BIAS_VAR_CL2 = 32
-BIAS_VAR_CL3 = 32
-BIAS_VAR_CL4 = 32
-BIAS_VAR_CL5 = 32
+BIAS_VAR_CL1 = 5
+BIAS_VAR_CL2 = 5
+BIAS_VAR_CL3 = 5
+BIAS_VAR_CL4 = 5
+BIAS_VAR_CL5 = 5
+BIAS_VAR_CL6 = 5
 
 WEIGHT_VAR_CL1 = [4, 4, 1, BIAS_VAR_CL1]
 WEIGHT_VAR_CL2 = [4, 4, BIAS_VAR_CL1, BIAS_VAR_CL2]
 WEIGHT_VAR_CL3 = [4, 4, BIAS_VAR_CL2, BIAS_VAR_CL3]
 WEIGHT_VAR_CL4 = [4, 4, BIAS_VAR_CL3, BIAS_VAR_CL4]
 WEIGHT_VAR_CL5 = [4, 4, BIAS_VAR_CL4, BIAS_VAR_CL5]
+WEIGHT_VAR_CL6 = [4, 4, BIAS_VAR_CL5, BIAS_VAR_CL6]
 
-UNITS_FC_LAYER = 4096
+UNITS_FC_LAYER = 1024
 
 WEIGHT_VAR_FC_OUTPUT = [UNITS_FC_LAYER, NUMBER_CLASSES]
 BIAS_VAR_FC_OUTPUT = [NUMBER_CLASSES]
 
 MODEL_DESCRIPTION = 'CNN-' + str(NUM_LAYERS) + "-a." + activation
 if activation == 'parametricrelu':
-    MODEL_DESCRIPTION += '.' + str(alpha_conv)
+    MODEL_DESCRIPTION += '.' + str(conv_alpha)
 if do == 'dropout':
     MODEL_DESCRIPTION += '-drop' + str(KEEP_PROB)
 # FC Layer (all)
 MODEL_DESCRIPTION += '-fc.' + str(UNITS_FC_LAYER) + '.' + fc_activation
 if fc_activation == 'parametricrelu':
-    MODEL_DESCRIPTION += '.' + str(alpha_fc)
-MODEL_DESCRIPTION += '-lr.' + str(LR_COEFF) + 'e-' + str(LR_EXP)
+    MODEL_DESCRIPTION += '.' + str(fc_alpha)
+MODEL_DESCRIPTION += '-lr.' + str(LR_COEFF) + 'e-' + str(LR_EXP) + '-k.' + str(BIAS_VAR_CL1)
 
 # Start Script Here:
 if not os.path.exists(EXPORT_DIRECTORY):
@@ -120,23 +124,28 @@ y = tf.placeholder(tf.float32, shape=[None, NUMBER_CLASSES])
 x_input = tf.reshape(x, [-1, *DEFAULT_IMAGE_SHAPE, 1])
 
 W_conv1, b_conv1 = tfs.var_weight_bias(WEIGHT_VAR_CL1, [BIAS_VAR_CL1])
-h_conv1 = tfs.conv(x_input, W_conv1, b_conv1, STRIDE_CONV2D_1, activation=activation, alpha=alpha_conv)
-# W_conv2, b_conv2 = tfs.var_weight_bias(WEIGHT_VAR_CL2, [BIAS_VAR_CL2])
-# h_conv2 = tfs.conv(h_conv1, W_conv2, b_conv2, STRIDE_CONV2D_2, activation=activation, alpha=alpha_conv)
-# W_conv3, b_conv3 = tfs.var_weight_bias(WEIGHT_VAR_CL3, [BIAS_VAR_CL3])
-# h_conv3 = tfs.conv(h_conv2, W_conv3, b_conv3, STRIDE_CONV2D_3, activation=activation, alpha=alpha_conv)
-# W_conv4, b_conv4 = tfs.var_weight_bias(WEIGHT_VAR_CL4, [BIAS_VAR_CL4])
-# h_conv4 = tfs.conv(h_conv3, W_conv4, b_conv4, STRIDE_CONV2D_4, activation=activation, alpha=alpha_conv)
+h_conv1 = tfs.conv(x_input, W_conv1, b_conv1, STRIDE_CONV2D_1, activation=activation, alpha=conv_alpha)
+W_conv2, b_conv2 = tfs.var_weight_bias(WEIGHT_VAR_CL2, [BIAS_VAR_CL2])
+h_conv2 = tfs.conv(h_conv1, W_conv2, b_conv2, STRIDE_CONV2D_2, activation=activation, alpha=conv_alpha)
+W_conv3, b_conv3 = tfs.var_weight_bias(WEIGHT_VAR_CL3, [BIAS_VAR_CL3])
+h_conv3 = tfs.conv(h_conv2, W_conv3, b_conv3, STRIDE_CONV2D_3, activation=activation, alpha=conv_alpha)
+W_conv4, b_conv4 = tfs.var_weight_bias(WEIGHT_VAR_CL4, [BIAS_VAR_CL4])
+h_conv4 = tfs.conv(h_conv3, W_conv4, b_conv4, STRIDE_CONV2D_4, activation=activation, alpha=conv_alpha)
+W_conv5, b_conv5 = tfs.var_weight_bias(WEIGHT_VAR_CL5, [BIAS_VAR_CL5])
+h_conv5 = tfs.conv(h_conv4, W_conv5, b_conv5, STRIDE_CONV2D_5, activation=activation, alpha=conv_alpha)
+W_conv6, b_conv6 = tfs.var_weight_bias(WEIGHT_VAR_CL6, [BIAS_VAR_CL6])
+h_conv6 = tfs.conv(h_conv5, W_conv6, b_conv6, STRIDE_CONV2D_6, activation=activation, alpha=conv_alpha)
 
+LAYERS = [h_conv1, h_conv2, h_conv3, h_conv4, h_conv5, h_conv6]
 # The input should be shaped/flattened
-h_flat, h_flat_shape = tfs.flatten(h_conv1)
+h_flat, h_flat_shape = tfs.flatten(LAYERS[NUM_LAYERS - 1])
 
 # fully connected layer,the shape of the patch should be defined
 W_fc1, b_fc1 = tfs.var_weight_bias([h_flat_shape, UNITS_FC_LAYER], [UNITS_FC_LAYER])
 if do == "no-dropout":
-    h_fc1 = tfs.fully_connect(h_flat, W_fc1, b_fc1, activation=fc_activation, alpha=alpha_fc)
+    h_fc1 = tfs.fully_connect(h_flat, W_fc1, b_fc1, activation=fc_activation, alpha=fc_alpha)
 else:
-    h_fc1 = tfs.fully_connect_with_dropout(h_flat, W_fc1, b_fc1, keep_prob, activation=fc_activation, alpha=alpha_fc)
+    h_fc1 = tfs.fully_connect_with_dropout(h_flat, W_fc1, b_fc1, keep_prob, activation=fc_activation, alpha=fc_alpha)
 
 # weight and bias of the output layer
 W_fco, b_fco = tfs.var_weight_bias(WEIGHT_VAR_FC_OUTPUT, BIAS_VAR_FC_OUTPUT)
@@ -166,6 +175,7 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 
 val_step = 0
+mil_step = 0
 # TRAIN ROUTINE #
 with tf.Session(config=config) as sess:
     sess.run(init_op)
@@ -174,19 +184,33 @@ with tf.Session(config=config) as sess:
     x_0 = np.zeros(INPUT_IMAGE_SHAPE, dtype=np.float32)
     print("Model Dimensions: ")
     print("h_conv1: ", tfs.get_tensor_shape_tuple(h_conv1))
-    # print("h_conv2: ", tfs.get_tensor_shape_tuple(h_conv2))
-    # print("h_conv3: ", tfs.get_tensor_shape_tuple(h_conv3))
-    # print("h_conv4: ", tfs.get_tensor_shape_tuple(h_conv4))
+    if NUM_LAYERS > 1:
+        print("h_conv2: ", tfs.get_tensor_shape_tuple(h_conv2))
+    if NUM_LAYERS > 2:
+        print("h_conv3: ", tfs.get_tensor_shape_tuple(h_conv3))
+    if NUM_LAYERS > 3:
+        print("h_conv4: ", tfs.get_tensor_shape_tuple(h_conv4))
+    if NUM_LAYERS > 4:
+        print("h_conv5: ", tfs.get_tensor_shape_tuple(h_conv5))
+    if NUM_LAYERS > 5:
+        print("h_conv6: ", tfs.get_tensor_shape_tuple(h_conv6))
     print("h_flat: ", tfs.get_tensor_shape_tuple(h_flat))
     print("h_fc1: ", tfs.get_tensor_shape_tuple(h_fc1))
     print("y_conv: ", tfs.get_tensor_shape_tuple(y_conv))
-    print(":")
+    print("--")
     print("Filter Dimensions:")
-    print("h_c1_filt: ", WEIGHT_VAR_CL1[0:2], " stride: ", STRIDE_CONV2D_1[1:3], " alpha=", alpha_conv)
-    print("h_c2_filt: ", WEIGHT_VAR_CL2[0:2], " stride: ", STRIDE_CONV2D_2[1:3], " alpha=", alpha_conv)
-    print("h_c3_filt: ", WEIGHT_VAR_CL3[0:2], " stride: ", STRIDE_CONV2D_3[1:3], " alpha=", alpha_conv)
-    print("h_c4_filt: ", WEIGHT_VAR_CL4[0:2], " stride: ", STRIDE_CONV2D_4[1:3], " alpha=", alpha_conv)
-    print(":")
+    print("h_c1_filt: ", WEIGHT_VAR_CL1[0:2], " stride: ", STRIDE_CONV2D_1[1:3], " alpha=", conv_alpha)
+    if NUM_LAYERS > 1:
+        print("h_c2_filt: ", WEIGHT_VAR_CL2[0:2], " stride: ", STRIDE_CONV2D_2[1:3], " alpha=", conv_alpha)
+    if NUM_LAYERS > 2:
+        print("h_c3_filt: ", WEIGHT_VAR_CL3[0:2], " stride: ", STRIDE_CONV2D_3[1:3], " alpha=", conv_alpha)
+    if NUM_LAYERS > 3:
+        print("h_c4_filt: ", WEIGHT_VAR_CL4[0:2], " stride: ", STRIDE_CONV2D_4[1:3], " alpha=", conv_alpha)
+    if NUM_LAYERS > 4:
+        print("h_c5_filt: ", WEIGHT_VAR_CL5[0:2], " stride: ", STRIDE_CONV2D_5[1:3], " alpha=", conv_alpha)
+    if NUM_LAYERS > 5:
+        print("h_c6_filt: ", WEIGHT_VAR_CL6[0:2], " stride: ", STRIDE_CONV2D_6[1:3], " alpha=", conv_alpha)
+    print("--")
 
     # save model as pbtxt:
     tf.train.write_graph(sess.graph_def, EXPORT_DIRECTORY, MODEL_NAME + '.pbtxt', True)
@@ -212,6 +236,12 @@ with tf.Session(config=config) as sess:
             val_accuracy_array[val_step, 0] = (1 + val_step) * 20 * TRAIN_BATCH_SIZE
             val_accuracy_array[val_step, 1] = val_accuracy
             val_step += 1
+
+        if i % 1000 == 0 and i is not 0:
+            # Periodically test entire dataset:
+            millenium_accuracy = accuracy.eval(feed_dict={x: x_val_data, y: y_val_data, keep_prob: 1.0})
+            print(" -- -- Holdout Attempt# %d, Accuracy: %g" % (mil_step, millenium_accuracy))
+            mil_step += 1
 
         train_step.run(feed_dict={x: batch_x_train, y: batch_y_train, keep_prob: KEEP_PROB})
     FINISH_TIME_MS = tfs.current_time_ms()  # FINISH TRAINING TIMER
@@ -239,15 +269,15 @@ with tf.Session(config=config) as sess:
 
     ws.Beep(900, 1000)
     ELAPSED_TIME_TRAIN = FINISH_TIME_MS - START_TIME_MS
-    # Save Data:
+    # Save Data: TODO: FIX THIS
     INFO = "h_c1_filt: " + str(WEIGHT_VAR_CL1[0:2]) + " stride: " + str(STRIDE_CONV2D_1[1:3]) + " alpha=" + str(
-        alpha_conv) + "\n" + \
+        conv_alpha) + "\n" + \
            "h_c2_filt: " + str(WEIGHT_VAR_CL2[0:2]) + " stride: " + str(STRIDE_CONV2D_2[1:3]) + " alpha=" + str(
-        alpha_conv) + "\n" + \
+        conv_alpha) + "\n" + \
            "h_c3_filt: " + str(WEIGHT_VAR_CL3[0:2]) + " stride: " + str(STRIDE_CONV2D_3[1:3]) + " alpha=" + str(
-        alpha_conv) + "\n" + \
+        conv_alpha) + "\n" + \
            "h_c4_filt: " + str(WEIGHT_VAR_CL4[0:2]) + " stride: " + str(STRIDE_CONV2D_4[1:3]) + " alpha=" + str(
-        alpha_conv) + "\n" + "alphafc=" + str(alpha_fc) + '\n' + result_string + '\n' + \
+        conv_alpha) + "\n" + "alphafc=" + str(fc_alpha) + '\n' + result_string + '\n' + \
            'elapsed time (ms):' + str(ELAPSED_TIME_TRAIN)
 
     output_folder_name = EXPORT_DIRECTORY + 'S' + str(subject_number) + '_wlen' + str(DATA_WINDOW_SIZE) + '/'

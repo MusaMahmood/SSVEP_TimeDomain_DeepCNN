@@ -194,7 +194,7 @@ def get_outputs(y, node_name):
     return tf.nn.softmax(y, node_name)
 
 
-# ## FOR SAVING DATA:
+# # # FOR SAVING DATA:
 def get_activations_mat(x, keep_prob, sess, layer, input_sample, input_shape):
     units = sess.run(layer, feed_dict={x: np.reshape(input_sample, input_shape, order='F'), keep_prob: 1.0})
     return units
