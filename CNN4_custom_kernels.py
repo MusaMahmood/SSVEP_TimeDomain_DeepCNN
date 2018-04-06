@@ -34,8 +34,8 @@ TEMP_DIRECTORY = 'temp_models/'
 TEMP_CKPT_FILE = TEMP_DIRECTORY + MODEL_NAME + '.ckpt'
 
 # MATLAB DICT KEYS
-KEY_X_DATA_DICTIONARY = 'relevant_data'
-KEY_Y_DATA_DICTIONARY = 'Y'
+MATLAB_DICT_KEY_X = 'relevant_data'
+MATLAB_DICT_KEY_Y = 'Y'
 
 # IMAGE SHAPE/CHARACTERISTICS
 DATA_WINDOW_SIZE = win_len
@@ -130,7 +130,7 @@ y_conv = tfs.connect(h_fc1_drop, W_fco, b_fco)
 
 # training and reducing the cost/loss function
 cross_entropy = tfs.loss_layer_v2(y, y_conv)
-train_step = tfs.train(LEARNING_RATE, cross_entropy)
+train_step = tfs.train_optimize(LEARNING_RATE, cross_entropy)
 # Output Node and Prediction; is it correct, and accuracy
 outputs = tf.nn.softmax(y_conv, name=output_node_name)
 prediction_check, prediction = tfs.check_prediction(y, outputs)
@@ -138,9 +138,8 @@ accuracy = tfs.get_accuracy(prediction_check)  # Float 32
 
 # Load Data:
 print('Train Folder Path: ', TRAINING_FOLDER_PATH)
-x_data, y_data = tfs.load_data(TRAINING_FOLDER_PATH, DEFAULT_IMAGE_SHAPE, KEY_X_DATA_DICTIONARY, KEY_Y_DATA_DICTIONARY)
-x_val_data, y_val_data = tfs.load_data(TEST_FOLDER_PATH,
-                                       DEFAULT_IMAGE_SHAPE, KEY_X_DATA_DICTIONARY, KEY_Y_DATA_DICTIONARY)
+x_data, y_data = tfs.load_data(TRAINING_FOLDER_PATH, DEFAULT_IMAGE_SHAPE, MATLAB_DICT_KEY_X, MATLAB_DICT_KEY_Y)
+x_val_data, y_val_data = tfs.load_data(TEST_FOLDER_PATH, DEFAULT_IMAGE_SHAPE, MATLAB_DICT_KEY_X, MATLAB_DICT_KEY_Y)
 # Split training set:
 x_train, x_test, y_train, y_test = train_test_split(x_data, y_data, train_size=0.75, random_state=1)
 

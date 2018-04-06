@@ -176,7 +176,7 @@ y_conv = tfs.connect(h_fc1_drop, W_fco, b_fco)
 
 # training and reducing the cost/loss function
 cross_entropy = tfs.loss_layer_v2(y, y_conv)
-train_step = tfs.train(LEARNING_RATE, cross_entropy)
+train_step = tfs.train_optimize(LEARNING_RATE, cross_entropy)
 # Output Node and Prediction; is it correct, and accuracy
 outputs = tf.nn.softmax(y_conv, name=output_node_name)
 prediction_check, prediction = tfs.check_prediction(y, outputs)
