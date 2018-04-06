@@ -1,6 +1,7 @@
 import glob
 import numpy as np
 import pandas as pd
+import winsound as ws
 import tensorflow as tf
 import time
 from scipy.io import loadmat, savemat
@@ -40,12 +41,29 @@ def train(x, y, keep_prob, accuracy, train_step, x_train, y_train, x_test, y_tes
             val_accuracy_array[val_step, 1] = val_accuracy
             val_step += 1
 
-        train_step.run(feed_dict={x: batch_x_train, y: batch_y_train, keep_prob: 0.1})
+        train_step.run(feed_dict={x: batch_x_train, y: batch_y_train, keep_prob: keep_prob_feed})
 
 
 def test(sess, x, y, accuracy, x_test, y_test, keep_prob, test_type='Holdout Validation'):
     test_accuracy = sess.run(accuracy, feed_dict={x: x_test, y: y_test, keep_prob: 1.0})
     print("Testing Accuracy - ", test_type, ':', test_accuracy, "\n\n")
+
+
+def confusion_matrix_test(sess, x, y, keep_prob, prediction, input_shape, x_val_data, y_val_data, number_classes=5):
+    y_val_tf = np.zeros([x_val_data.shape[0]], dtype=np.int32)
+    predictions = np.zeros([x_val_data.shape[0]], dtype=np.int32)
+    for i in range(0, x_val_data.shape[0]):
+        predictions[i] = sess.run(prediction,
+                                  feed_dict={x: x_val_data[i].reshape(input_shape),
+                                             y: y_val_data[i].reshape([1, number_classes]), keep_prob: 1.0})
+        for c in range(0, number_classes):
+            if y_val_data[i][c]:
+                y_val_tf[i] = c
+
+    tf_confusion_matrix = tf.confusion_matrix(labels=y_val_tf, predictions=predictions, num_classes=number_classes)
+    confusion_matrix_nd = tf.Tensor.eval(tf_confusion_matrix, feed_dict=None, session=None)
+    print(confusion_matrix_nd)
+    return confusion_matrix_nd
 
 
 def current_time_ms():
@@ -302,11 +320,11 @@ def get_model_dimensions(h, h_flat, h_fc, y_conv, number_layers):
     return message
 
 
-def get_filter_dimensions(W_x, W_y, S_x, S_y, alpha_conv, num_layers):
+def get_filter_dimensions(w_x, w_y, s_x, s_y, alpha_conv, num_layers):
     message = "Filter Dimensions:" + '\n'
     for i in range(0, num_layers):
-        message += "h_c" + str(i + 1) + "_filt: " + str([W_x[i], W_y[i]]) + \
-                   " stride: " + str([S_x[i], S_y[i]]) + " calpha=" + str(alpha_conv[i]) + '\n'
+        message += "h_c" + str(i + 1) + "_filt: " + str([w_x[i], w_y[i]]) + \
+                   " stride: " + str([s_x[i], s_y[i]]) + " calpha=" + str(alpha_conv[i]) + '\n'
     return message
 
 
@@ -358,3 +376,8 @@ def get_all_activations_4layer(sess, x, keep_prob, input_shape, training_data, f
     savemat(fn_out, mdict={'input_sample': training_data, 'h_conv1': w_hconv1, 'h_conv2': w_hconv2,
                            'h_flat': w_flat, 'h_fc1': w_hfc1_do,
                            'y_out': w_y_out})
+
+
+def beep(freq=900, length_ms=1000):
+    # A 900Hz Beep:
+    ws.Beep(freq, length_ms)
