@@ -189,7 +189,7 @@ accuracy = tfs.get_accuracy(prediction_check)  # Float 32
 # training and reducing the cost/loss function
 # cross_entropy = tfs.loss_layer(y, y_conv)  # Calculate cross-entropy loss
 # cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=y_conv))
-# train_step = tf.train.AdamOptimizer(LEARNING_RATE).minimize(cross_entropy)
+# train_step = tf.train.AdamOptimizer(learn_rate).minimize(cross_entropy)
 # prediction_check = tf.equal(tf.argmax(outputs, 1), tf.argmax(y, 1))
 # accuracy = tf.reduce_mean(tf.cast(prediction_check, tf.float32))
 
