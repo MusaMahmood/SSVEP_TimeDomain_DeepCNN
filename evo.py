@@ -1,4 +1,4 @@
-# MUSA MAHMOOD; DEOGRATIAS MZURIKWAO; ANREW SHORT - Copyright 2018
+# MUSA MAHMOOD; ANDREW SHORT - Copyright 2018
 # Python 3.6.3
 # TF 1.5.0
 
@@ -51,8 +51,9 @@ output_node_name = 'output'
 x, y, keep_prob = tfs.placeholders(input_shape, NUMBER_CLASSES, input_node_name, keep_prob_node_name)
 # 2. Reshape x input tensor:
 x_input = tfs.reshape_input(x, input_shape)
-# 3. Add Convolution Layers:
+# 3. Add First Convolution Layers:
 h = [tfs.conv_layer(x_input, [W_x[0], W_y[0]], 1, N_FILTERS[0], [Str_X[0], Str_Y[0]], activation, Alphas[0])]
+# 4. Add Additional Conv Layers as Needed:
 for i in range(1, NUM_LAYERS):
     h.append(tfs.conv_layer(h[i - 1], [W_x[i], W_y[i]], N_FILTERS[i - 1], N_FILTERS[i], [Str_X[i], Str_Y[i]],
                             activation, Alphas[i]))
@@ -65,7 +66,7 @@ y_conv = tfs.output_layer(h_fc, [UNITS_FC, NUMBER_CLASSES], [NUMBER_CLASSES])
 train_step = tfs.train_loss(y, y_conv, learn_rate)
 # 7. Output Node, compute accuracy [Softmax outputs, output int, accuracy]
 outputs, prediction, accuracy = tfs.get_outputs(y, y_conv, output_node_name)
-# Initialize tensorflow for training & evaluation:
+# 8. Initialize tensorflow for training & evaluation:
 saver, init_op, config = tfs.tf_initialize()
 
 # Enter Training Routine:
@@ -89,17 +90,17 @@ with tf.Session(config=config) as sess:
     # Confusion Matrix:
     tfs.confusion_matrix_test(sess, x, y, keep_prob, prediction, [1, *input_shape], x_val, y_val, NUMBER_CLASSES)
     tfs.beep()
-    # TODO: Add the rest of this stuff from network_compare.
+    # Save Statistics:
     output_folder_name = EXPORT_DIRECTORY + 'S' + str(subject_number) + '_wlen' + str(win_len) + '/'
     if not os.path.exists(output_folder_name):
         os.makedirs(output_folder_name)
     stat_fn = 'stats_' + Model_description + '.mat'
     tfs.save_statistics(output_folder_name, tt_acc, Model_description, model_dims + filter_dims, elapsed_time_ms,
                         val_acc, stat_fn)
-    user_input = input('Export Current Model?')
-    if user_input == "1" or user_input.lower() == "y":
+    # user_input = input('Export Current Model?')
+    # if user_input == "1" or user_input.lower() == "y":
         # tfs.get_all_activations_4layer(sess, x, keep_prob, INPUT_IMAGE_SHAPE, x_val_data, output_folder_name, h_conv1,
         #                            h_conv2, h_conv3, h_conv4, h_flat, h_fc1, y_conv)
-        CHECKPOINT_FILE = EXPORT_DIRECTORY + Model_description + '.ckpt'
-        saver.save(sess, CHECKPOINT_FILE)
-        tfs.export_model([input_node_name, keep_prob_node_name], output_node_name, EXPORT_DIRECTORY, Model_description)
+        # CHECKPOINT_FILE = EXPORT_DIRECTORY + Model_description + '.ckpt'
+        # saver.save(sess, CHECKPOINT_FILE)
+        # tfs.export_model([input_node_name, keep_prob_node_name], output_node_name, EXPORT_DIRECTORY, Model_description)

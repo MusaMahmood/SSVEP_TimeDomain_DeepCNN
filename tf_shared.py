@@ -1,3 +1,7 @@
+# MUSA MAHMOOD - Copyright 2018
+# Python 3.6.3
+# TF 1.5.0
+
 import glob
 import numpy as np
 import pandas as pd

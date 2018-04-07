@@ -1,299 +1,105 @@
-# MUSA MAHMOOD; DEOGRATIAS MZURIKWAO - Copyright 2018
-# Python 3.6.1
+# MUSA MAHMOOD - Copyright 2018
+# Python 3.6.3
 # TF 1.5.0
 
 # IMPORTS:
 import tensorflow as tf
-import numpy as np
 import os as os
-import datetime
-import time
-import winsound as ws
 import tf_shared as tfs
 from sklearn.model_selection import train_test_split
 
-# CONSTANTS:
-TIMESTAMP_START = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d_%H.%M.%S')
-wlens = [128, 192, 256, 384, 512]
-w_sel = 0  # 0 -> 4
-win_len = wlens[w_sel]
-electrodes = ''
-input_data_descriptor = 'time_domain_hpf_new'  # FIXED + TRUNCATED
-subject_number = 99
-subject_folder = '/S' + str(subject_number)
-folder_name = ''
-
-TOTAL_DATA_CHANNELS = 2
-TRAINING_FOLDER_PATH = r'' + input_data_descriptor + subject_folder + '/' + 'w' + str(win_len)
-TEST_FOLDER_PATH = TRAINING_FOLDER_PATH + '/v'
 EXPORT_DIRECTORY = 'model_exports/'
-MODEL_NAME = 'ssvep_net_2ch' + '_S' + str(subject_number) + '_' + input_data_descriptor + '_wlen' + str(win_len)
-CHECKPOINT_FILE = EXPORT_DIRECTORY + MODEL_NAME + '.ckpt'
-
-# MATLAB DICT KEYS
-MATLAB_DICT_KEY_X = 'relevant_data'
-MATLAB_DICT_KEY_Y = 'Y'
-
-# IMAGE SHAPE/CHARACTERISTICS
-DATA_WINDOW_SIZE = win_len
+wlens = [128, 192, 256, 384, 512]
+win_len = wlens[0]
+subject_number = 99
+TRAINING_FOLDER = r'' + 'time_domain_hpf_new' + '/S' + str(subject_number) + '/' + 'w' + str(win_len)
+input_shape = [2, win_len]  # for single sample reshape(x, [1, *input_shape])
 NUMBER_CLASSES = 5
 
-DEFAULT_IMAGE_SHAPE = [TOTAL_DATA_CHANNELS, DATA_WINDOW_SIZE]
-INPUT_IMAGE_SHAPE = [1, TOTAL_DATA_CHANNELS, DATA_WINDOW_SIZE]
-SELECT_DATA_CHANNELS = np.asarray(range(1, TOTAL_DATA_CHANNELS + 1))
-NUMBER_DATA_CHANNELS = SELECT_DATA_CHANNELS.shape[0]  # Selects first int in shape
-
-# INFORMATION!
-"""
-    Options for activation are :
-    'relu'
-    'elu'
-    'leakyrelu'
-    'parametricrelu'
-"""
-activation = 'parametricrelu'
-conv_alpha = 0.5
-
-fc_activation = 'relu'
-fc_alpha = 0.01
-
-do = "dropout"  # dropout or no-dropout
-KEEP_PROB = 0.5
-
-# FOR MODEL DESIGN
-TRAINING_TOTAL = 256000
-TRAIN_BATCH_SIZE = 64
-NUMBER_STEPS = TRAINING_TOTAL // TRAIN_BATCH_SIZE
-TEST_BATCH_SIZE = 100
+# LOAD DATA:
+x_tt, y_tt = tfs.load_data(TRAINING_FOLDER, input_shape, key_x='relevant_data', key_y='Y')
+x_train, x_test, y_train, y_test = train_test_split(x_tt, y_tt, train_size=0.75, random_state=1)
+x_val, y_val = tfs.load_data(TRAINING_FOLDER + '/v', input_shape, key_x='relevant_data', key_y='Y')
+# Initialize CNN Components
+NUM_LAYERS = 1  # Default
+N_FILTERS = [5, 5, 5, 5, 5, 5, 5, 5]  # Number of filters for 8 layers
+Str_X = [1, 1, 1, 1, 1, 1, 1, 1]
+Str_Y = [1, 1, 1, 1, 1, 1, 1, 1]
+W_x = [2, 2, 2, 2, 2, 2, 2, 2]  # Weights in x-axis
+W_y = [2, 2, 2, 2, 2, 2, 2, 2]  # Weights in y-axis, kernel size = [x, y]
+Alphas = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]  # Parametric ReLU values for Conv Layers
+Alpha_fc = 0.01  # If using parametric ReLU in fully connected layer.
+do = 'dropout'
+keep_prob_feed = 0.5
+train_steps = 1000
 LR_EXP = 3
 LR_COEFF = 1
-LEARNING_RATE = float(LR_COEFF) * float(10.0 ** (-float(LR_EXP)))
+learn_rate = float(LR_COEFF) * float(10.0 ** (-float(LR_EXP)))
+activation_fc = 'relu'
+activation = 'parametricrelu'
+UNITS_FC = 1024
+Model_description = tfs.get_model_description(NUM_LAYERS, activation, do, keep_prob_feed, UNITS_FC,
+                                              activation_fc, LR_COEFF, LR_EXP, N_FILTERS, Alphas[0:NUM_LAYERS])
 
-NUM_LAYERS = 2
-
-STRIDE_CONV2D_1 = [1, 1, 1, 1]
-STRIDE_CONV2D_2 = [1, 1, 1, 1]
-STRIDE_CONV2D_3 = [1, 1, 1, 1]
-STRIDE_CONV2D_4 = [1, 1, 1, 1]
-STRIDE_CONV2D_5 = [1, 1, 1, 1]
-STRIDE_CONV2D_6 = [1, 1, 1, 1]
-
-NUM_FILTERS = [5, 5, 5, 5, 5, 5, 5, 5]
-BIAS_VAR_CL1 = NUM_FILTERS[0]
-BIAS_VAR_CL2 = NUM_FILTERS[1]
-BIAS_VAR_CL3 = NUM_FILTERS[2]
-BIAS_VAR_CL4 = NUM_FILTERS[3]
-BIAS_VAR_CL5 = NUM_FILTERS[4]
-BIAS_VAR_CL6 = NUM_FILTERS[5]
-
-WEIGHT_VAR_CL1 = [4, 4, 1, BIAS_VAR_CL1]
-WEIGHT_VAR_CL2 = [4, 4, BIAS_VAR_CL1, BIAS_VAR_CL2]
-WEIGHT_VAR_CL3 = [4, 4, BIAS_VAR_CL2, BIAS_VAR_CL3]
-WEIGHT_VAR_CL4 = [4, 4, BIAS_VAR_CL3, BIAS_VAR_CL4]
-WEIGHT_VAR_CL5 = [4, 4, BIAS_VAR_CL4, BIAS_VAR_CL5]
-WEIGHT_VAR_CL6 = [4, 4, BIAS_VAR_CL5, BIAS_VAR_CL6]
-
-UNITS_FC_LAYER = 1024
-
-WEIGHT_VAR_FC_OUTPUT = [UNITS_FC_LAYER, NUMBER_CLASSES]
-BIAS_VAR_FC_OUTPUT = [NUMBER_CLASSES]
-
-MODEL_DESCRIPTION = tfs.get_model_description(NUM_LAYERS, activation, do, KEEP_PROB, UNITS_FC_LAYER, fc_activation,
-                                              LR_COEFF, LR_EXP, NUM_FILTERS, conv_alpha, fc_alpha)
-
-# Start Script Here:
 if not os.path.exists(EXPORT_DIRECTORY):
     os.mkdir(EXPORT_DIRECTORY)
 input_node_name = 'input'
 keep_prob_node_name = 'keep_prob'
 output_node_name = 'output'
 
-# MODEL INPUT #
-x = tf.placeholder(tf.float32, shape=[None, *DEFAULT_IMAGE_SHAPE], name=input_node_name)
-keep_prob = tf.placeholder(tf.float32, name=keep_prob_node_name)
-y = tf.placeholder(tf.float32, shape=[None, NUMBER_CLASSES])
+# 1. Load Model Placeholders:
+x, y, keep_prob = tfs.placeholders(input_shape, NUMBER_CLASSES, input_node_name, keep_prob_node_name)
+# 2. Reshape x input tensor:
+x_input = tfs.reshape_input(x, input_shape)
+# 3. Add Convolution Layers:
+h = [tfs.conv_layer(x_input, [W_x[0], W_y[0]], 1, N_FILTERS[0], [Str_X[0], Str_Y[0]], activation, Alphas[0])]
+for i in range(1, NUM_LAYERS):
+    h.append(tfs.conv_layer(h[i - 1], [W_x[i], W_y[i]], N_FILTERS[i - 1], N_FILTERS[i], [Str_X[i], Str_Y[i]],
+                            activation, Alphas[i]))
+# 4. Flatten and Fully Connect:
+h_flat, flat_shape = tfs.flatten(h[NUM_LAYERS - 1])
+h_fc = tfs.fully_connect_layer(h_flat, [flat_shape, UNITS_FC], [UNITS_FC], do, keep_prob, activation_fc, Alpha_fc)
+# 5. Connect to form output:
+y_conv = tfs.output_layer(h_fc, [UNITS_FC, NUMBER_CLASSES], [NUMBER_CLASSES])
+# 6. Compute loss/cross-entropy for training step (using Adam gradient optimization):
+train_step = tfs.train_loss(y, y_conv, learn_rate)
+# 7. Output Node, compute accuracy [Softmax outputs, output int, accuracy]
+outputs, prediction, accuracy = tfs.get_outputs(y, y_conv, output_node_name)
+# Initialize tensorflow for training & evaluation:
+saver, init_op, config = tfs.tf_initialize()
 
-# 1- Reshape Input to Default [n, x, y, 1] dimensions
-x_input = tf.reshape(x, [-1, *DEFAULT_IMAGE_SHAPE, 1])
-
-W_conv1, b_conv1 = tfs.var_weight_bias(WEIGHT_VAR_CL1, [BIAS_VAR_CL1])
-h_conv1 = tfs.conv(x_input, W_conv1, b_conv1, STRIDE_CONV2D_1, activation=activation, alpha=conv_alpha)
-W_conv2, b_conv2 = tfs.var_weight_bias(WEIGHT_VAR_CL2, [BIAS_VAR_CL2])
-h_conv2 = tfs.conv(h_conv1, W_conv2, b_conv2, STRIDE_CONV2D_2, activation=activation, alpha=conv_alpha)
-W_conv3, b_conv3 = tfs.var_weight_bias(WEIGHT_VAR_CL3, [BIAS_VAR_CL3])
-h_conv3 = tfs.conv(h_conv2, W_conv3, b_conv3, STRIDE_CONV2D_3, activation=activation, alpha=conv_alpha)
-W_conv4, b_conv4 = tfs.var_weight_bias(WEIGHT_VAR_CL4, [BIAS_VAR_CL4])
-h_conv4 = tfs.conv(h_conv3, W_conv4, b_conv4, STRIDE_CONV2D_4, activation=activation, alpha=conv_alpha)
-W_conv5, b_conv5 = tfs.var_weight_bias(WEIGHT_VAR_CL5, [BIAS_VAR_CL5])
-h_conv5 = tfs.conv(h_conv4, W_conv5, b_conv5, STRIDE_CONV2D_5, activation=activation, alpha=conv_alpha)
-W_conv6, b_conv6 = tfs.var_weight_bias(WEIGHT_VAR_CL6, [BIAS_VAR_CL6])
-h_conv6 = tfs.conv(h_conv5, W_conv6, b_conv6, STRIDE_CONV2D_6, activation=activation, alpha=conv_alpha)
-
-LAYERS = [h_conv1, h_conv2, h_conv3, h_conv4, h_conv5, h_conv6]
-# The input should be shaped/flattened
-h_flat, h_flat_shape = tfs.flatten(LAYERS[NUM_LAYERS - 1])
-
-# fully connected layer,the shape of the patch should be defined
-W_fc1, b_fc1 = tfs.var_weight_bias([h_flat_shape, UNITS_FC_LAYER], [UNITS_FC_LAYER])
-
-# if do == "no-dropout":
-#     h_fc1 = tfs.fully_connect(h_flat, W_fc1, b_fc1, activation=fc_activation, alpha=fc_alpha)
-# else:
-#     h_fc1 = tfs.fully_connect_with_dropout(h_flat, W_fc1, b_fc1, keep_prob, activation=fc_activation, alpha=fc_alpha)
-h_fc1 = tfs.fully_connect_layer(h_flat, W_fc1, b_fc1, keep_prob, activation=fc_activation, alpha_fc=fc_alpha)
-
-# weight and bias of the output layer
-W_fco, b_fco = tfs.var_weight_bias(WEIGHT_VAR_FC_OUTPUT, BIAS_VAR_FC_OUTPUT)
-y_conv = tfs.connect(h_fc1, W_fco, b_fco)
-
-# training and reducing the cost/loss function
-cross_entropy = tfs.loss_layer_v2(y, y_conv)
-train_step = tfs.train_optimize(LEARNING_RATE, cross_entropy)
-
-# Output Node and Prediction; Correctness, and Accuracy
-outputs = tf.nn.softmax(y_conv, name=output_node_name)
-prediction_check, prediction = tfs.check_prediction(y, outputs)
-accuracy = tfs.get_accuracy(prediction_check)
-
-# Load Data:
-print('Train Folder Path: ', TRAINING_FOLDER_PATH)
-x_data, y_data = tfs.load_data(TRAINING_FOLDER_PATH, DEFAULT_IMAGE_SHAPE, MATLAB_DICT_KEY_X, MATLAB_DICT_KEY_Y)
-x_val_data, y_val_data = tfs.load_data(TEST_FOLDER_PATH, DEFAULT_IMAGE_SHAPE, MATLAB_DICT_KEY_X, MATLAB_DICT_KEY_Y)
-# Split training set:
-x_train, x_test, y_train, y_test = train_test_split(x_data, y_data, train_size=0.9, random_state=1)
-
-# Merges all summaries collected in the default graph.
-merged_summary_op = tf.summary.merge_all()
-saver = tf.train.Saver()  # Initialize tf Saver for model export
-init_op = tf.global_variables_initializer()
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
-
-val_step = 0
-mil_step = 0
-# TRAIN ROUTINE #
+# Enter Training Routine:
 with tf.Session(config=config) as sess:
     sess.run(init_op)
-    # TODO save/restore checkpoints
-    print("Model Dimensions: ")
-    print("h_conv1: ", tfs.get_tensor_shape_tuple(h_conv1))
-    if NUM_LAYERS > 1:
-        print("h_conv2: ", tfs.get_tensor_shape_tuple(h_conv2))
-    if NUM_LAYERS > 2:
-        print("h_conv3: ", tfs.get_tensor_shape_tuple(h_conv3))
-    if NUM_LAYERS > 3:
-        print("h_conv4: ", tfs.get_tensor_shape_tuple(h_conv4))
-    if NUM_LAYERS > 4:
-        print("h_conv5: ", tfs.get_tensor_shape_tuple(h_conv5))
-    if NUM_LAYERS > 5:
-        print("h_conv6: ", tfs.get_tensor_shape_tuple(h_conv6))
-    print("h_flat: ", tfs.get_tensor_shape_tuple(h_flat))
-    print("h_fc1: ", tfs.get_tensor_shape_tuple(h_fc1))
-    print("y_conv: ", tfs.get_tensor_shape_tuple(y_conv))
-    print("--")
-    print("Filter Dimensions:")
-    print("h_c1_filt: ", WEIGHT_VAR_CL1[0:2], " stride: ", STRIDE_CONV2D_1[1:3], " alpha=", conv_alpha)
-    if NUM_LAYERS > 1:
-        print("h_c2_filt: ", WEIGHT_VAR_CL2[0:2], " stride: ", STRIDE_CONV2D_2[1:3], " alpha=", conv_alpha)
-    if NUM_LAYERS > 2:
-        print("h_c3_filt: ", WEIGHT_VAR_CL3[0:2], " stride: ", STRIDE_CONV2D_3[1:3], " alpha=", conv_alpha)
-    if NUM_LAYERS > 3:
-        print("h_c4_filt: ", WEIGHT_VAR_CL4[0:2], " stride: ", STRIDE_CONV2D_4[1:3], " alpha=", conv_alpha)
-    if NUM_LAYERS > 4:
-        print("h_c5_filt: ", WEIGHT_VAR_CL5[0:2], " stride: ", STRIDE_CONV2D_5[1:3], " alpha=", conv_alpha)
-    if NUM_LAYERS > 5:
-        print("h_c6_filt: ", WEIGHT_VAR_CL6[0:2], " stride: ", STRIDE_CONV2D_6[1:3], " alpha=", conv_alpha)
-    print("--")
-
-    # save model as pbtxt:
-    tf.train.write_graph(sess.graph_def, EXPORT_DIRECTORY, MODEL_NAME + '.pbtxt', True)
-    total_val_steps = NUMBER_STEPS // 20
-    val_accuracy_array = np.zeros([total_val_steps, 2], dtype=np.float32)
-    # START TRAINING TIMER
-    START_TIME_MS = tfs.current_time_ms()
-    for i in range(NUMBER_STEPS):
-        offset = (i * TRAIN_BATCH_SIZE) % (x_train.shape[0] - TRAIN_BATCH_SIZE)
-        batch_x_train = x_train[offset:(offset + TRAIN_BATCH_SIZE)]
-        batch_y_train = y_train[offset:(offset + TRAIN_BATCH_SIZE)]
-        if i % 10 == 0:
-            train_accuracy = accuracy.eval(feed_dict={x: batch_x_train, y: batch_y_train, keep_prob: 1.0})
-            print("step %d, training accuracy %g" % (i, train_accuracy))
-
-        if i % 20 == 0:
-            # Calculate batch loss and accuracy
-            offset = (val_step * TEST_BATCH_SIZE) % (x_test.shape[0] - TEST_BATCH_SIZE)
-            batch_x_val = x_test[offset:(offset + TEST_BATCH_SIZE), :, :]
-            batch_y_val = y_test[offset:(offset + TEST_BATCH_SIZE), :]
-            val_accuracy = accuracy.eval(feed_dict={x: batch_x_val, y: batch_y_val, keep_prob: 1.0})
-            print("Validation step %d, validation accuracy %g" % (val_step, val_accuracy))
-            val_accuracy_array[val_step, 0] = (1 + val_step) * 20 * TRAIN_BATCH_SIZE
-            val_accuracy_array[val_step, 1] = val_accuracy
-            val_step += 1
-
-        if i % 250 == 0 and i is not 0:
-            # Periodically test entire dataset:
-            millenium_accuracy = accuracy.eval(feed_dict={x: x_val_data, y: y_val_data, keep_prob: 1.0})
-            print(" -- -- Holdout Attempt# %d, Accuracy: %g" % (mil_step, millenium_accuracy))
-            mil_step += 1
-
-        train_step.run(feed_dict={x: batch_x_train, y: batch_y_train, keep_prob: KEEP_PROB})
-    FINISH_TIME_MS = tfs.current_time_ms()  # FINISH TRAINING TIMER
-    # Run test data (entire set) to see accuracy.
-    test_accuracy_split = sess.run(accuracy, feed_dict={x: x_test, y: y_test, keep_prob: 1.0})  # original
-    print("\n Testing Accuracy:", test_accuracy_split, "\n\n")
-
-    test_accuracy_validation = sess.run(accuracy, feed_dict={x: x_val_data, y: y_val_data, keep_prob: 1.0})
-    # Holdout Validation Accuracy:
-    result_string = "\n Holdout Validation:" + str(test_accuracy_validation)
-    print(result_string)
-    print('\n elapsed time: ', str((FINISH_TIME_MS - START_TIME_MS) / 1000.0) + ' s')
-    y_val_tf = np.zeros([x_val_data.shape[0]], dtype=np.int32)
-    predictions = np.zeros([x_val_data.shape[0]], dtype=np.int32)
-    for i in range(0, x_val_data.shape[0]):
-        predictions[i] = sess.run(prediction,
-                                  feed_dict={x: x_val_data[i].reshape(INPUT_IMAGE_SHAPE),
-                                             y: y_val_data[i].reshape([1, NUMBER_CLASSES]), keep_prob: 1.0})
-        for c in range(0, NUMBER_CLASSES):
-            if y_val_data[i][c]:
-                y_val_tf[i] = c
-
-    tf_confusion_matrix = tf.confusion_matrix(labels=y_val_tf, predictions=predictions, num_classes=NUMBER_CLASSES)
-    print(tf.Tensor.eval(tf_confusion_matrix, feed_dict=None, session=None))  # 'Confusion Matrix: \n\n',
-
-    ws.Beep(900, 1000)
-    ELAPSED_TIME_TRAIN = FINISH_TIME_MS - START_TIME_MS
-    # Save Data:
-    INFO = "h_c1_filt: " + str(WEIGHT_VAR_CL1[0:2]) + " stride: " + str(STRIDE_CONV2D_1[1:3]) + " alpha=" + str(
-        conv_alpha) + "\n"
-    if NUM_LAYERS > 1:
-        INFO += "h_c2_filt: " + str(WEIGHT_VAR_CL2[0:2]) + " stride: " + str(STRIDE_CONV2D_2[1:3]) + " alpha=" + str(
-            conv_alpha) + "\n"
-    if NUM_LAYERS > 2:
-        INFO += "h_c3_filt: " + str(WEIGHT_VAR_CL3[0:2]) + " stride: " + str(STRIDE_CONV2D_3[1:3]) + " alpha=" + str(
-            conv_alpha) + "\n"
-    if NUM_LAYERS > 3:
-        INFO += "h_c4_filt: " + str(WEIGHT_VAR_CL4[0:2]) + " stride: " + str(STRIDE_CONV2D_4[1:3]) + " alpha=" + str(
-            conv_alpha) + "\n"
-    if NUM_LAYERS > 4:
-        INFO += "h_c5_filt: " + str(WEIGHT_VAR_CL5[0:2]) + " stride: " + str(STRIDE_CONV2D_5[1:3]) + " alpha=" + str(
-            conv_alpha) + "\n"
-    if NUM_LAYERS > 5:
-        INFO += "h_c6_filt: " + str(WEIGHT_VAR_CL6[0:2]) + " stride: " + str(STRIDE_CONV2D_6[1:3]) + " alpha=" + str(
-            conv_alpha) + "\n"
-    if fc_activation == 'parametricrelu':
-        INFO += "alphafc=" + str(fc_alpha)
-    INFO += '\n' + result_string + '\n' + 'elapsed time (ms):' + str(ELAPSED_TIME_TRAIN)
-
-    output_folder_name = EXPORT_DIRECTORY + 'S' + str(subject_number) + '_wlen' + str(DATA_WINDOW_SIZE) + '/'
+    # Print Model Information Before Starting.
+    model_dims = tfs.get_model_dimensions(h, h_flat, h_fc, y_conv, NUM_LAYERS)
+    filter_dims = tfs.get_filter_dimensions(W_x, W_y, Str_X, Str_Y, Alphas, NUM_LAYERS)
+    print(model_dims, '\n', filter_dims)
+    # Save model as pbtxt:
+    tf.train.write_graph(sess.graph_def, EXPORT_DIRECTORY, Model_description + '.pbtxt', True)
+    start_time_ms = tfs.current_time_ms()
+    # Train Model:
+    tfs.train(x, y, keep_prob, accuracy, train_step, x_train, y_train, x_test, y_test, keep_prob_feed, train_steps)
+    elapsed_time_ms = (tfs.current_time_ms() - start_time_ms)
+    # Test Accuracy: (Test/Train Split)
+    tt_acc = tfs.test(sess, x, y, accuracy, x_test, y_test, keep_prob, test_type='Train-Split')
+    # Validation Accuracy:
+    val_acc = tfs.test(sess, x, y, accuracy, x_val, y_val, keep_prob)
+    print('Elapsed Time (ms): ', elapsed_time_ms)
+    # Confusion Matrix:
+    tfs.confusion_matrix_test(sess, x, y, keep_prob, prediction, [1, *input_shape], x_val, y_val, NUMBER_CLASSES)
+    tfs.beep()
+    # TODO: Add the rest of this stuff from network_compare.
+    output_folder_name = EXPORT_DIRECTORY + 'S' + str(subject_number) + '_wlen' + str(win_len) + '/'
     if not os.path.exists(output_folder_name):
         os.makedirs(output_folder_name)
-    stat_fn = 'stats_' + MODEL_DESCRIPTION + '.mat'
-    tfs.save_statistics(output_folder_name, val_accuracy_array, MODEL_DESCRIPTION, INFO, ELAPSED_TIME_TRAIN,
-                        test_accuracy_validation, stat_fn)
-
-    # user_input = input('Export Current Model?')
-    # if user_input == "1" or user_input.lower() == "y":
-    #     tfs.get_all_activations_4layer(sess, x, keep_prob, INPUT_IMAGE_SHAPE, x_val_data, output_folder_name, h_conv1,
-    #                                h_conv2, h_conv3, h_conv4, h_flat, h_fc1, y_conv)
-    #     saver.save(sess, CHECKPOINT_FILE)
-    #     tfs.export_model([input_node_name, keep_prob_node_name], output_node_name, EXPORT_DIRECTORY, MODEL_NAME)
+    stat_fn = 'stats_' + Model_description + '.mat'
+    tfs.save_statistics(output_folder_name, tt_acc, Model_description, model_dims + filter_dims, elapsed_time_ms,
+                        val_acc, stat_fn)
+    user_input = input('Export Current Model?')
+    if user_input == "1" or user_input.lower() == "y":
+        # tfs.get_all_activations_4layer(sess, x, keep_prob, INPUT_IMAGE_SHAPE, x_val_data, output_folder_name, h_conv1,
+        #                            h_conv2, h_conv3, h_conv4, h_flat, h_fc1, y_conv)
+        CHECKPOINT_FILE = EXPORT_DIRECTORY + Model_description + '.ckpt'
+        saver.save(sess, CHECKPOINT_FILE)
+        tfs.export_model([input_node_name, keep_prob_node_name], output_node_name, EXPORT_DIRECTORY, Model_description)
