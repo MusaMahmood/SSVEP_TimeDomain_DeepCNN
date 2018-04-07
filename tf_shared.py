@@ -122,11 +122,7 @@ def conv_layer(input_, w_kernels, in_ch, num_kernels, strides, activation='relu'
 
 def fully_connect_layer(x, w_shape, b_shape, do, keep_prob, activation='relu', alpha_fc=0.01):
     w_f, b_f = var_weight_bias(w_shape, b_shape)
-    if do == 'dropout':
-        h = fully_connect_with_dropout(x, w_f, b_f, keep_prob, activation, alpha=alpha_fc)
-    else:
-        h = fully_connect(x, w_f, b_f, activation, alpha=alpha_fc)
-    return h
+    return fully_connect(x, w_f, b_f, keep_prob, do, activation, alpha_fc)
 
 
 def output_layer(x, w_shape, b_shape, version='v1'):
@@ -138,13 +134,6 @@ def output_layer(x, w_shape, b_shape, version='v1'):
 
 
 def conv(x, w, b, stride=list([1, 1, 1, 1]), activation='relu', padding='SAME', alpha=0.01):
-    """
-        Options for activation are :
-        'relu'
-        'elu'
-        'leakyrelu'
-        'parametricrelu'
-    """
     x = tf.nn.conv2d(x, w, strides=stride, padding=padding)
     x = tf.nn.bias_add(x, b)
     if activation == 'relu':
@@ -160,26 +149,6 @@ def conv(x, w, b, stride=list([1, 1, 1, 1]), activation='relu', padding='SAME', 
     elif activation == 'selu':
         return tf.nn.selu(x)
     # TODO: Parametric ELU?
-
-
-# Convolution and max-pooling functions
-def relu_conv(x_, w_, b_, stride, padding='SAME'):
-    # INPUT: [batch, in_height, in_width, in_channels]
-    x_ = tf.nn.conv2d(x_, w_, strides=stride, padding=padding)
-    x_ = tf.nn.bias_add(x_, b_)
-    return tf.nn.relu(x_)
-
-
-def leaky_conv(x_, w_, b_, stride, alpha, padding='SAME'):
-    x_ = tf.nn.conv2d(x_, w_, strides=stride, padding=padding)
-    x_ = tf.nn.bias_add(x_, b_)
-    return tf.nn.leaky_relu(x_, alpha=alpha)
-
-
-def elu_conv(x_, w_, b_, stride, padding='SAME'):
-    x_ = tf.nn.conv2d(x_, w_, strides=stride, padding=padding)
-    x_ = tf.nn.bias_add(x_, b_)
-    return tf.nn.elu(x_)
 
 
 def get_tensor_shape_tuple(x_):
@@ -212,24 +181,18 @@ def max_pool(x_, ksize, stride, padding='SAME'):
     return tf.nn.max_pool(x_, ksize=ksize, strides=stride, padding=padding)
 
 
-def max_pool_valid(x_, ksize, stride):
-    return tf.nn.max_pool(x_, ksize=ksize, strides=stride, padding='VALID')
-
-
-def fully_connect_with_dropout(x, w, b, keep_prob, activation='relu', alpha=0.01):
-    return tf.nn.dropout(fully_connect(x, w, b, activation=activation, alpha=alpha), keep_prob=keep_prob)
-
-
 # For a relu activated FC
-def fully_connect(x, w, b, activation='relu', alpha=0.01):
-    if activation == 'relu':
-        return tf.nn.relu(connect(x, w, b))
-    elif activation == 'elu':
-        return tf.nn.elu(connect(x, w, b))
+def fully_connect(x, w, b, keep_prob, do='dropout', activation='relu', alpha=0.01):
+    if activation == 'elu':
+        fc = tf.nn.elu(connect(x, w, b))
     elif activation == 'leakyrelu':
-        return tf.nn.leaky_relu(connect(x, w, b), alpha=0.01)
+        fc = tf.nn.leaky_relu(connect(x, w, b), alpha=0.01)
     elif activation == 'parametricrelu':
-        return tf.nn.leaky_relu(connect(x, w, b), alpha=alpha)
+        fc = tf.nn.leaky_relu(connect(x, w, b), alpha=alpha)
+    else:
+        fc = tf.nn.relu(connect(x, w, b))
+    if do == 'dropout':
+        return tf.nn.dropout(fc, keep_prob=keep_prob)
 
 
 # Simple matmul + bias add. Used for output layer

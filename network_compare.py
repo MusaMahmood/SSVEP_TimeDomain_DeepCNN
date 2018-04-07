@@ -136,10 +136,11 @@ h_flat, h_flat_shape = tfs.flatten(LAYERS[NUM_LAYERS - 1])
 # fully connected layer,the shape of the patch should be defined
 W_fc1, b_fc1 = tfs.var_weight_bias([h_flat_shape, UNITS_FC_LAYER], [UNITS_FC_LAYER])
 
-if do == "no-dropout":
-    h_fc1 = tfs.fully_connect(h_flat, W_fc1, b_fc1, activation=fc_activation, alpha=fc_alpha)
-else:
-    h_fc1 = tfs.fully_connect_with_dropout(h_flat, W_fc1, b_fc1, keep_prob, activation=fc_activation, alpha=fc_alpha)
+# if do == "no-dropout":
+#     h_fc1 = tfs.fully_connect(h_flat, W_fc1, b_fc1, activation=fc_activation, alpha=fc_alpha)
+# else:
+#     h_fc1 = tfs.fully_connect_with_dropout(h_flat, W_fc1, b_fc1, keep_prob, activation=fc_activation, alpha=fc_alpha)
+h_fc1 = tfs.fully_connect_layer(h_flat, W_fc1, b_fc1, keep_prob, activation=fc_activation, alpha_fc=fc_alpha)
 
 # weight and bias of the output layer
 W_fco, b_fco = tfs.var_weight_bias(WEIGHT_VAR_FC_OUTPUT, BIAS_VAR_FC_OUTPUT)
