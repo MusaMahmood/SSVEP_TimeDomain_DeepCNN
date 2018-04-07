@@ -47,6 +47,7 @@ def train(x, y, keep_prob, accuracy, train_step, x_train, y_train, x_test, y_tes
 def test(sess, x, y, accuracy, x_test, y_test, keep_prob, test_type='Holdout Validation'):
     test_accuracy = sess.run(accuracy, feed_dict={x: x_test, y: y_test, keep_prob: 1.0})
     print("Testing Accuracy - ", test_type, ':', test_accuracy, "\n\n")
+    return test_accuracy
 
 
 def confusion_matrix_test(sess, x, y, keep_prob, prediction, input_shape, x_val_data, y_val_data, number_classes=5):

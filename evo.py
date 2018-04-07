@@ -21,7 +21,7 @@ x_tt, y_tt = tfs.load_data(TRAINING_FOLDER, input_shape, key_x='relevant_data', 
 x_train, x_test, y_train, y_test = train_test_split(x_tt, y_tt, train_size=0.75, random_state=1)
 x_val, y_val = tfs.load_data(TRAINING_FOLDER + '/v', input_shape, key_x='relevant_data', key_y='Y')
 # Initialize CNN Components
-NUM_LAYERS = 2  # Default
+NUM_LAYERS = 1  # Default
 N_FILTERS = [5, 5, 5, 5, 5, 5, 5, 5]  # Number of filters for 8 layers
 Str_X = [1, 1, 1, 1, 1, 1, 1, 1]
 Str_Y = [1, 1, 1, 1, 1, 1, 1, 1]
@@ -60,8 +60,6 @@ for i in range(1, NUM_LAYERS):
 h_flat, flat_shape = tfs.flatten(h[NUM_LAYERS - 1])
 h_fc = tfs.fully_connect_layer(h_flat, [flat_shape, UNITS_FC], [UNITS_FC], do, keep_prob, activation_fc, Alpha_fc)
 # 5. Connect to form output:
-# W_fco, b_fco = tfs.var_weight_bias([UNITS_FC, NUMBER_CLASSES], [NUMBER_CLASSES])
-# y_conv = tfs.connect(h_fc, W_fco, b_fco)
 y_conv = tfs.output_layer(h_fc, [UNITS_FC, NUMBER_CLASSES], [NUMBER_CLASSES])
 # 6. Compute loss/cross-entropy for training step (using Adam gradient optimization):
 train_step = tfs.train_loss(y, y_conv, learn_rate)
@@ -74,8 +72,9 @@ saver, init_op, config = tfs.tf_initialize()
 with tf.Session(config=config) as sess:
     sess.run(init_op)
     # Print Model Information Before Starting.
-    print(tfs.get_model_dimensions(h, h_flat, h_fc, y_conv, NUM_LAYERS))
-    print(tfs.get_filter_dimensions(W_x, W_y, Str_X, Str_Y, Alphas, NUM_LAYERS))
+    model_dims = tfs.get_model_dimensions(h, h_flat, h_fc, y_conv, NUM_LAYERS)
+    filter_dims = tfs.get_filter_dimensions(W_x, W_y, Str_X, Str_Y, Alphas, NUM_LAYERS)
+    print(model_dims, '\n', filter_dims)
     # Save model as pbtxt:
     tf.train.write_graph(sess.graph_def, EXPORT_DIRECTORY, Model_description + '.pbtxt', True)
     start_time_ms = tfs.current_time_ms()
@@ -83,17 +82,24 @@ with tf.Session(config=config) as sess:
     tfs.train(x, y, keep_prob, accuracy, train_step, x_train, y_train, x_test, y_test, keep_prob_feed, train_steps)
     elapsed_time_ms = (tfs.current_time_ms() - start_time_ms)
     # Test Accuracy: (Test/Train Split)
-    tfs.test(sess, x, y, accuracy, x_test, y_test, keep_prob, test_type='Train-Split')
+    tt_acc = tfs.test(sess, x, y, accuracy, x_test, y_test, keep_prob, test_type='Train-Split')
     # Validation Accuracy:
-    tfs.test(sess, x, y, accuracy, x_val, y_val, keep_prob)
+    val_acc = tfs.test(sess, x, y, accuracy, x_val, y_val, keep_prob)
     print('Elapsed Time (ms): ', elapsed_time_ms)
     # Confusion Matrix:
     tfs.confusion_matrix_test(sess, x, y, keep_prob, prediction, [1, *input_shape], x_val, y_val, NUMBER_CLASSES)
     tfs.beep()
     # TODO: Add the rest of this stuff from network_compare.
-    # output_folder_name = EXPORT_DIRECTORY + 'S' + str(subject_number) + '_wlen' + str(DATA_WINDOW_SIZE) + '/'
-    # if not os.path.exists(output_folder_name):
-    #     os.makedirs(output_folder_name)
-    # stat_fn = 'stats_' + MODEL_DESCRIPTION + '.mat'
-    # tfs.save_statistics(output_folder_name, val_accuracy_array, MODEL_DESCRIPTION, INFO, ELAPSED_TIME_TRAIN,
-    #                     test_accuracy_validation, stat_fn)
+    output_folder_name = EXPORT_DIRECTORY + 'S' + str(subject_number) + '_wlen' + str(win_len) + '/'
+    if not os.path.exists(output_folder_name):
+        os.makedirs(output_folder_name)
+    stat_fn = 'stats_' + Model_description + '.mat'
+    tfs.save_statistics(output_folder_name, tt_acc, Model_description, model_dims + filter_dims, elapsed_time_ms,
+                        val_acc, stat_fn)
+    user_input = input('Export Current Model?')
+    if user_input == "1" or user_input.lower() == "y":
+        # tfs.get_all_activations_4layer(sess, x, keep_prob, INPUT_IMAGE_SHAPE, x_val_data, output_folder_name, h_conv1,
+        #                            h_conv2, h_conv3, h_conv4, h_flat, h_fc1, y_conv)
+        CHECKPOINT_FILE = EXPORT_DIRECTORY + Model_description + '.ckpt'
+        saver.save(sess, CHECKPOINT_FILE)
+        tfs.export_model([input_node_name, keep_prob_node_name], output_node_name, EXPORT_DIRECTORY, Model_description)
