@@ -4,11 +4,7 @@
 
 # IMPORTS:
 import tensorflow as tf
-import numpy as np
 import os as os
-import datetime
-import time
-import winsound as ws
 import tf_shared as tfs
 from sklearn.model_selection import train_test_split
 
@@ -24,20 +20,26 @@ NUMBER_CLASSES = 5
 x_tt, y_tt = tfs.load_data(TRAINING_FOLDER, input_shape, key_x='relevant_data', key_y='Y')
 x_train, x_test, y_train, y_test = train_test_split(x_tt, y_tt, train_size=0.75, random_state=1)
 x_val, y_val = tfs.load_data(TRAINING_FOLDER + '/v', input_shape, key_x='relevant_data', key_y='Y')
-# CNN Components
-NUM_LAYERS = 1  # Default
+# Initialize CNN Components
+NUM_LAYERS = 2  # Default
 N_FILTERS = [5, 5, 5, 5, 5, 5, 5, 5]  # Number of filters for 8 layers
 Str_X = [1, 1, 1, 1, 1, 1, 1, 1]
 Str_Y = [1, 1, 1, 1, 1, 1, 1, 1]
 W_x = [2, 2, 2, 2, 2, 2, 2, 2]  # Weights in x-axis
 W_y = [2, 2, 2, 2, 2, 2, 2, 2]  # Weights in y-axis, kernel size = [x, y]
 Alphas = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]  # Parametric ReLU values for Conv Layers
+Alpha_fc = 0.01  # If using parametric ReLU in fully connected layer.
+do = 'dropout'
+keep_prob_feed = 0.5
+train_steps = 1000
 LR_EXP = 3
 LR_COEFF = 1
-LEARNING_RATE = float(LR_COEFF) * float(10.0 ** (-float(LR_EXP)))
+learn_rate = float(LR_COEFF) * float(10.0 ** (-float(LR_EXP)))
 activation_fc = 'relu'
 activation = 'parametricrelu'
 UNITS_FC = 1024
+Model_description = tfs.get_model_description(NUM_LAYERS, activation, do, keep_prob_feed, UNITS_FC,
+                                              activation_fc, LR_COEFF, LR_EXP, N_FILTERS, Alphas[0:NUM_LAYERS])
 
 if not os.path.exists(EXPORT_DIRECTORY):
     os.mkdir(EXPORT_DIRECTORY)
@@ -49,20 +51,20 @@ output_node_name = 'output'
 x, y, keep_prob = tfs.placeholders(input_shape, NUMBER_CLASSES, input_node_name, keep_prob_node_name)
 # 2. Reshape x input tensor:
 x_input = tfs.reshape_input(x, input_shape)
-# 3. Add Convolutional Layers:
-h = []
-h.append(tfs.conv_layer(x_input, [W_x[0], W_y[0]], 1, N_FILTERS[0], [Str_X[0], Str_Y[0]], activation, Alphas[0]))
+# 3. Add Convolution Layers:
+h = [tfs.conv_layer(x_input, [W_x[0], W_y[0]], 1, N_FILTERS[0], [Str_X[0], Str_Y[0]], activation, Alphas[0])]
 for i in range(1, NUM_LAYERS):
-    h.append(tfs.conv_layer(h[i-1], [W_x[i], W_y[i]], N_FILTERS[i-1], N_FILTERS[i], [Str_X[i], Str_Y[i]], activation, Alphas[i]))
+    h.append(tfs.conv_layer(h[i - 1], [W_x[i], W_y[i]], N_FILTERS[i - 1], N_FILTERS[i], [Str_X[i], Str_Y[i]],
+                            activation, Alphas[i]))
 # 4. Flatten and Fully Connect:
-h_flat, flat_shape = tfs.flatten(h[NUM_LAYERS-1])
-W_fc, b_fc = tfs.var_weight_bias([flat_shape, UNITS_FC], [UNITS_FC])
-h_fc = tfs.fully_connect_with_dropout(h_flat, W_fc, b_fc, keep_prob, activation=activation_fc)
+h_flat, flat_shape = tfs.flatten(h[NUM_LAYERS - 1])
+h_fc = tfs.fully_connect_layer(h_flat, [flat_shape, UNITS_FC], [UNITS_FC], do, keep_prob, activation_fc, Alpha_fc)
 # 5. Connect to form output:
-W_fco, b_fco = tfs.var_weight_bias([UNITS_FC, NUMBER_CLASSES], [NUMBER_CLASSES])
-y_conv = tfs.connect(h_fc, W_fco, b_fco)
+# W_fco, b_fco = tfs.var_weight_bias([UNITS_FC, NUMBER_CLASSES], [NUMBER_CLASSES])
+# y_conv = tfs.connect(h_fc, W_fco, b_fco)
+y_conv = tfs.output_layer(h_fc, [UNITS_FC, NUMBER_CLASSES], [NUMBER_CLASSES])
 # 6. Compute loss/cross-entropy for training step (using Adam gradient optimization):
-train_step = tfs.train_loss(y, y_conv, LEARNING_RATE)
+train_step = tfs.train_loss(y, y_conv, learn_rate)
 # 7. Output Node, compute accuracy [Softmax outputs, output int, accuracy]
 outputs, prediction, accuracy = tfs.get_outputs(y, y_conv, output_node_name)
 # Initialize tensorflow for training & evaluation:
@@ -75,13 +77,12 @@ with tf.Session(config=config) as sess:
     print(tfs.get_model_dimensions(h, h_flat, h_fc, y_conv, NUM_LAYERS))
     print(tfs.get_filter_dimensions(W_x, W_y, Str_X, Str_Y, Alphas, NUM_LAYERS))
     # Save model as pbtxt:
-    # TODO:
-    # tf.train.write_graph(sess.graph_def, EXPORT_DIRECTORY, MODEL_NAME + '.pbtxt', True)
+    tf.train.write_graph(sess.graph_def, EXPORT_DIRECTORY, Model_description + '.pbtxt', True)
     start_time_ms = tfs.current_time_ms()
     # Train Model:
-    tfs.train(x, y, keep_prob, accuracy, train_step, x_train, y_train, x_test, y_test, 0.5, 500)
+    tfs.train(x, y, keep_prob, accuracy, train_step, x_train, y_train, x_test, y_test, keep_prob_feed, train_steps)
     elapsed_time_ms = (tfs.current_time_ms() - start_time_ms)
-    # Test Accuracy:
+    # Test Accuracy: (Test/Train Split)
     tfs.test(sess, x, y, accuracy, x_test, y_test, keep_prob, test_type='Train-Split')
     # Validation Accuracy:
     tfs.test(sess, x, y, accuracy, x_val, y_val, keep_prob)
@@ -96,5 +97,3 @@ with tf.Session(config=config) as sess:
     # stat_fn = 'stats_' + MODEL_DESCRIPTION + '.mat'
     # tfs.save_statistics(output_folder_name, val_accuracy_array, MODEL_DESCRIPTION, INFO, ELAPSED_TIME_TRAIN,
     #                     test_accuracy_validation, stat_fn)
-
-

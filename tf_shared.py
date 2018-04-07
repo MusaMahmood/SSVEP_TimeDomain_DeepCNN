@@ -119,6 +119,23 @@ def conv_layer(input_, w_kernels, in_ch, num_kernels, strides, activation='relu'
     return conv(input_, weights, biases, stride=[1, *strides, 1], activation=activation, alpha=alpha)
 
 
+def fully_connect_layer(x, w_shape, b_shape, do, keep_prob, activation='relu', alpha_fc=0.01):
+    w_f, b_f = var_weight_bias(w_shape, b_shape)
+    if do == 'dropout':
+        h = fully_connect_with_dropout(x, w_f, b_f, keep_prob, activation, alpha=alpha_fc)
+    else:
+        h = fully_connect(x, w_f, b_f, activation, alpha=alpha_fc)
+    return h
+
+
+def output_layer(x, w_shape, b_shape, version='v1'):
+    w_fco, b_fco = var_weight_bias(w_shape, b_shape)
+    if version == 'v1':
+        return connect(x, w_fco, b_fco)
+    elif version == 'v2':
+        return connect_v2(x, w_fco, b_fco)
+
+
 def conv(x, w, b, stride=list([1, 1, 1, 1]), activation='relu', padding='SAME', alpha=0.01):
     """
         Options for activation are :
@@ -137,6 +154,11 @@ def conv(x, w, b, stride=list([1, 1, 1, 1]), activation='relu', padding='SAME', 
         return tf.nn.leaky_relu(x, alpha=0.01)
     elif activation == 'parametricrelu':
         return tf.nn.leaky_relu(x, alpha=alpha)
+    elif activation == 'crelu':
+        return tf.nn.crelu(x)
+    elif activation == 'selu':
+        return tf.nn.selu(x)
+    # TODO: Parametric ELU?
 
 
 # Convolution and max-pooling functions
