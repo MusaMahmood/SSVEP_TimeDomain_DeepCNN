@@ -24,14 +24,14 @@ def tf_initialize():
 
 
 def train(x, y, keep_prob, accuracy, train_step, x_train, y_train, x_test, y_test, keep_prob_feed=0.5,
-          number_steps=100, batch_size=64, test_batch_size=100, train_check=10, test_check=20):
+          number_steps=100, train_batch_size=64, test_batch_size=100, train_check=10, test_check=20):
     val_step = 0
-    total_val_steps = number_steps // 20
+    total_val_steps = number_steps // test_check
     val_accuracy_array = np.zeros([total_val_steps, 2], dtype=np.float32)
     for i in range(0, number_steps):
-        offset = (i * batch_size) % (x_train.shape[0] - batch_size)
-        batch_x_train = x_train[offset:(offset + batch_size)]
-        batch_y_train = y_train[offset:(offset + batch_size)]
+        offset = (i * train_batch_size) % (x_train.shape[0] - train_batch_size)
+        batch_x_train = x_train[offset:(offset + train_batch_size)]
+        batch_y_train = y_train[offset:(offset + train_batch_size)]
         if i % train_check == 0:
             train_accuracy = accuracy.eval(feed_dict={x: batch_x_train, y: batch_y_train, keep_prob: 1.0})
             print("step %d, training accuracy %g" % (i, train_accuracy))
@@ -41,7 +41,7 @@ def train(x, y, keep_prob, accuracy, train_step, x_train, y_train, x_test, y_tes
             batch_y_val = y_test[offset:(offset + test_batch_size), :]
             val_accuracy = accuracy.eval(feed_dict={x: batch_x_val, y: batch_y_val, keep_prob: 1.0})
             print("Validation step %d, validation accuracy %g" % (val_step, val_accuracy))
-            val_accuracy_array[val_step, 0] = (1 + val_step) * 20 * test_batch_size
+            val_accuracy_array[val_step, 0] = (1 + val_step) * test_check * test_batch_size
             val_accuracy_array[val_step, 1] = val_accuracy
             val_step += 1
 

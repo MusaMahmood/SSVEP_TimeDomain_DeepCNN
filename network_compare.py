@@ -97,9 +97,9 @@ with tf.Session(config=config) as sess:
     tfs.save_statistics(output_folder_name, tt_acc, Model_description, model_dims + filter_dims, elapsed_time_ms,
                         val_acc, stat_fn)
     user_input = input('Export Current Model?')
-    if user_input == "1" or user_input.lower() == "y":
+    # if user_input == "1" or user_input.lower() == "y":
         # tfs.get_all_activations_4layer(sess, x, keep_prob, INPUT_IMAGE_SHAPE, x_val_data, output_folder_name, h_conv1,
         #                            h_conv2, h_conv3, h_conv4, h_flat, h_fc1, y_conv)
-        CHECKPOINT_FILE = EXPORT_DIRECTORY + Model_description + '.ckpt'
-        saver.save(sess, CHECKPOINT_FILE)
-        tfs.export_model([input_node_name, keep_prob_node_name], output_node_name, EXPORT_DIRECTORY, Model_description)
+        # CHECKPOINT_FILE = EXPORT_DIRECTORY + Model_description + '.ckpt'
+        # saver.save(sess, CHECKPOINT_FILE)
+        # tfs.export_model([input_node_name, keep_prob_node_name], output_node_name, EXPORT_DIRECTORY, Model_description)
