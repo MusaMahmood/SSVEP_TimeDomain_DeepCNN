@@ -152,6 +152,8 @@ def conv(x, w, b, stride=list([1, 1, 1, 1]), activation='relu', padding='SAME', 
         return tf.nn.crelu(x)
     elif activation == 'selu':
         return tf.nn.selu(x)
+    elif activation == 'identity':
+        return tf.identity(x)
     # TODO: Parametric ELU?
 
 
@@ -187,14 +189,15 @@ def max_pool(x_, ksize, stride, padding='SAME'):
 
 # For a relu activated FC
 def fully_connect(x, w, b, keep_prob, do='dropout', activation='relu', alpha=0.01):
+    connected_layer = connect_v2(x, w, b)
     if activation == 'elu':
-        fc = tf.nn.elu(connect(x, w, b))
+        fc = tf.nn.elu(connected_layer)
     elif activation == 'leakyrelu':
-        fc = tf.nn.leaky_relu(connect(x, w, b), alpha=0.01)
+        fc = tf.nn.leaky_relu(connected_layer, alpha=0.01)
     elif activation == 'parametricrelu':
-        fc = tf.nn.leaky_relu(connect(x, w, b), alpha=alpha)
+        fc = tf.nn.leaky_relu(connected_layer, alpha=alpha)
     else:
-        fc = tf.nn.relu(connect(x, w, b))
+        fc = tf.nn.relu(connected_layer)
     if do == 'dropout':
         return tf.nn.dropout(fc, keep_prob=keep_prob)
 
