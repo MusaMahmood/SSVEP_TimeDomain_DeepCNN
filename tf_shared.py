@@ -8,6 +8,7 @@ import pandas as pd
 import winsound as ws
 import tensorflow as tf
 import time
+import warnings
 from scipy.io import loadmat, savemat
 from tensorflow.python.tools import freeze_graph
 from tensorflow.python.tools import optimize_for_inference_lib
@@ -46,6 +47,7 @@ def train(x, y, keep_prob, accuracy, train_step, x_train, y_train, x_test, y_tes
             val_step += 1
 
         train_step.run(feed_dict={x: batch_x_train, y: batch_y_train, keep_prob: keep_prob_feed})
+    return val_accuracy_array
 
 
 def test(sess, x, y, accuracy, x_test, y_test, keep_prob, test_type='Holdout Validation'):
@@ -154,6 +156,10 @@ def conv(x, w, b, stride=list([1, 1, 1, 1]), activation='relu', padding='SAME', 
         return tf.nn.selu(x)
     elif activation == 'identity':
         return tf.identity(x)
+    else:
+        warnings.warn("ERROR: INVALID ACTIVATION PROVIDED!")
+        print('Invalid input: ', activation)
+        exit(-1)
     # TODO: Parametric ELU?
 
 
@@ -285,6 +291,13 @@ def export_model(input_node_names, output_node_name_internal, export_dir, model_
 def save_statistics(folder_name, val_acc, details, info, elapsed_time, test_accuracy, file_name='stats.mat'):
     savemat(folder_name + file_name, mdict={'training_rate': val_acc, 'details': details, 'info': info,
                                             'elapsed_time': elapsed_time, 'test_accuracy': test_accuracy})
+
+
+def save_statistics_v2(folder_name, train_rate, details, info, elapsed_time, test_accuracy,
+                       val_acc=0, file_name='stats.mat'):
+    savemat(folder_name + file_name, mdict={'training_rate': train_rate, 'details': details, 'info': info,
+                                            'elapsed_time': elapsed_time, 'test_accuracy': test_accuracy,
+                                            'validation_accuracy': val_acc})
 
 
 # # # FOR SAVING DATA:
