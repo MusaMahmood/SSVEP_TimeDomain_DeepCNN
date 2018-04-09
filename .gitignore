@@ -8,3 +8,4 @@ time_domain_hpf/
 time_domain_bpf/
 __pycache__/
 time_domain_hpf_new/
+*.mat
