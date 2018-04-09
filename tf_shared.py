@@ -120,10 +120,11 @@ def conv_layer(input_, w_kernels, in_ch, num_kernels, strides, activation='relu'
         'leakyrelu'
         'parametricrelu'
     :param alpha: If using parametric relu
-    :return: Tensor representing the current layer.
+    :return: Tensor representing the current layer, weights, biases (if required)
     """
     weights, biases = var_weight_bias([*w_kernels, in_ch, num_kernels], [num_kernels])
-    return conv(input_, weights, biases, stride=[1, *strides, 1], activation=activation, alpha=alpha)
+    conv_tensor = conv(input_, weights, biases, stride=[1, *strides, 1], activation=activation, alpha=alpha)
+    return conv_tensor, weights, biases
 
 
 def fully_connect_layer(x, w_shape, b_shape, do, keep_prob, activation='relu', alpha_fc=0.01):

@@ -52,22 +52,24 @@ output_node_name = 'output'
 x, y, keep_prob = tfs.placeholders(input_shape, NUMBER_CLASSES, input_node_name, keep_prob_node_name)
 # 2. Reshape x input tensor:
 x_input = tfs.reshape_input(x, input_shape)
-# 3. Add First Convolution Layers:
-h = [tfs.conv_layer(x_input, [W_x[0], W_y[0]], 1, N_FILTERS[0], [Str_X[0], Str_Y[0]], activation, Alphas[0])]
+# 3. Add First Convolution Layers: (Collect, layer, weights and biases)
+hwb_list = [tfs.conv_layer(x_input, [W_x[0], W_y[0]], 1, N_FILTERS[0], [Str_X[0], Str_Y[0]], activation, Alphas[0])]
 # 4. Add Additional Conv Layers as Needed:
 for i in range(1, NUM_LAYERS):
-    h.append(tfs.conv_layer(h[i - 1], [W_x[i], W_y[i]], N_FILTERS[i - 1], N_FILTERS[i], [Str_X[i], Str_Y[i]],
-                            activation, Alphas[i]))
-# 4. Flatten and Fully Connect:
+    hwb_list.append(tfs.conv_layer(hwb_list[i - 1][0], [W_x[i], W_y[i]], N_FILTERS[i - 1], N_FILTERS[i],
+                                   [Str_X[i], Str_Y[i]], activation, Alphas[i]))
+# 4.1 Extract hidden layers to list
+h = [i[0] for i in hwb_list]
+# 5. Flatten and Fully Connect:
 h_flat, flat_shape = tfs.flatten(h[NUM_LAYERS - 1])
 h_fc = tfs.fully_connect_layer(h_flat, [flat_shape, UNITS_FC], [UNITS_FC], do, keep_prob, activation_fc, Alpha_fc)
-# 5. Connect to form output:
+# 6. Connect to form output:
 y_conv = tfs.output_layer(h_fc, [UNITS_FC, NUMBER_CLASSES], [NUMBER_CLASSES])
-# 6. Compute loss/cross-entropy for training step (using Adam gradient optimization):
+# 7. Compute loss/cross-entropy for training step (using Adam gradient optimization):
 train_step = tfs.train_loss(y, y_conv, learn_rate)
-# 7. Output Node, compute accuracy [Softmax outputs, output int, accuracy]
+# 8. Output Node, compute accuracy [Softmax outputs, output int, accuracy]
 outputs, prediction, accuracy = tfs.get_outputs(y, y_conv, output_node_name)
-# 8. Initialize tensorflow for training & evaluation:
+# 9. Initialize tensorflow for training & evaluation:
 saver, init_op, config = tfs.tf_initialize()
 
 # Enter Training Routine:
