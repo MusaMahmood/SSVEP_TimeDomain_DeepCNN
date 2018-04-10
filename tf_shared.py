@@ -58,9 +58,9 @@ def test(sess, x, y, accuracy, x_test, y_test, keep_prob, test_type='Holdout Val
 
 def test_v2(sess, x, y, accuracy, x_test, y_test, keep_prob, test_type='Holdout Validation', test_batch_size=100):
     test_accuracy = np.zeros(shape=[x_test.shape[0] // test_batch_size], dtype=np.float32)
-    for i in range(0, x_test.shape[0]//test_batch_size):
-        batch_x = x_test[i:i+test_batch_size]
-        batch_y = y_test[i:i+test_batch_size]
+    for i in range(0, x_test.shape[0] // test_batch_size):
+        batch_x = x_test[i:i + test_batch_size]
+        batch_y = y_test[i:i + test_batch_size]
         test_accuracy[i] = sess.run(accuracy, feed_dict={x: batch_x, y: batch_y, keep_prob: 1.0})
     test_accuracy = test_accuracy.mean()
     print("Testing Accuracy - ", test_type, ':', test_accuracy, "\n\n")
@@ -353,49 +353,49 @@ def get_activations_mat(x, keep_prob, sess, layer, input_sample, input_shape):
     return units
 
 
-# TODO: Create custom function to take any number of layers.
-def get_all_activations_4layer(sess, x, keep_prob, input_shape, training_data, folder_name, h_conv1, h_conv2, h_conv3,
-                               h_conv4,
-                               h_conv_flat, h_fc1_drop, y_conv):
-    h_conv1_shape = get_tensor_shape(h_conv1)
-    h_conv2_shape = get_tensor_shape(h_conv2)
-    h_conv3_shape = get_tensor_shape(h_conv3)
-    h_conv4_shape = get_tensor_shape(h_conv4)
-    h_conv_flat_shape = get_tensor_shape(h_conv_flat)
-    h_fc1_drop_shape = get_tensor_shape(h_fc1_drop)
-    y_conv_shape = get_tensor_shape(y_conv)
-    # Create empty arrays
-    w_hconv1 = np.empty([0, *h_conv1_shape], np.float32)
-    w_hconv2 = np.empty([0, *h_conv2_shape], np.float32)
-    w_hconv3 = np.empty([0, *h_conv3_shape], np.float32)
-    w_hconv4 = np.empty([0, *h_conv4_shape], np.float32)
-    w_flat = np.empty([0, *h_conv_flat_shape], np.float32)
-    w_hfc1_do = np.empty([0, *h_fc1_drop_shape], np.float32)
-    w_y_out = np.empty([0, *y_conv_shape], np.float32)
-    print('Getting all Activations: please wait... ')
-    for it in range(0, training_data.shape[0]):
-        if it % 100 == 0:
-            print('Saved Sample #', it)
-        sample = training_data[it]
-        w_hconv1 = np.concatenate((w_hconv1, get_activations_mat(x, keep_prob, sess, h_conv1, sample, input_shape)),
-                                  axis=0)
-        w_hconv2 = np.concatenate((w_hconv2, get_activations_mat(x, keep_prob, sess, h_conv2, sample, input_shape)),
-                                  axis=0)
-        w_hconv3 = np.concatenate((w_hconv3, get_activations_mat(x, keep_prob, sess, h_conv3, sample, input_shape)),
-                                  axis=0)
-        w_hconv4 = np.concatenate((w_hconv4, get_activations_mat(x, keep_prob, sess, h_conv4, sample, input_shape)),
-                                  axis=0)
-        w_flat = np.concatenate((w_flat, get_activations_mat(x, keep_prob, sess, h_conv_flat, sample, input_shape)),
-                                axis=0)
-        w_hfc1_do = np.concatenate((w_hfc1_do,
-                                    get_activations_mat(x, keep_prob, sess, h_fc1_drop, sample, input_shape)), axis=0)
-        w_y_out = np.concatenate((w_y_out,
-                                  get_activations_mat(x, keep_prob, sess, y_conv, sample, input_shape)), axis=0)
-        # Save all activations:
+def get_all_activations(sess, x, keep_prob, input_shape, test_data_x, test_data_y, folder_name, h_layers, h_flat, h_fc,
+                        y_out):
+    h_conv_shapes = [get_tensor_shape(i) for i in h_layers]
+    h_flat_shape = get_tensor_shape(h_flat)
+    h_fc_shape = get_tensor_shape(h_fc)
+    y_out_shape = get_tensor_shape(y_out)
+    # Create Empty Arrays: TODO: CHANGE PREALLOCATION METHOD (this is slooow)
+    w_conv = [np.empty([0, *i]) for i in h_conv_shapes]
+    w_conv1 = w_conv[0]
+    if len(h_layers) > 1:
+        w_conv2 = w_conv[1]
+    if len(h_layers) > 2:
+        w_conv3 = w_conv[2]
+    if len(h_layers) > 3:
+        w_conv4 = w_conv[3]
+    w_flat = np.empty([0, *h_flat_shape], np.float32)
+    w_hfc = np.empty([0, *h_fc_shape], np.float32)
+    w_y_out = np.empty([0, *y_out_shape], np.float32)
+    for i in range(0, test_data_x.shape[0]):
+        if i % 100 == 0:
+            print('Sample #', i, 'out of: ', test_data_x.shape[0])
+        sample = test_data_x[i]
+        w_flat = np.concatenate((w_flat, get_activations_mat(x, keep_prob, sess, h_flat, sample, input_shape)), axis=0)
+        w_hfc = np.concatenate((w_hfc, get_activations_mat(x, keep_prob, sess, h_fc, sample, input_shape)), axis=0)
+        w_y_out = np.concatenate((w_y_out, get_activations_mat(x, keep_prob, sess, y_out, sample, input_shape)), axis=0)
+        w_conv1 = np.concatenate((w_conv1, get_activations_mat(x, keep_prob, sess, h_layers[0], sample, input_shape)),
+                                 axis=0)
+        if len(h_layers) > 1:
+            w_conv2 = np.concatenate((w_conv2, get_activations_mat(x, keep_prob, sess, h_layers[1], sample, input_shape)), axis=0)
+        if len(h_layers) > 2:
+            w_conv3 = np.concatenate((w_conv3, get_activations_mat(x, keep_prob, sess, h_layers[2], sample, input_shape)), axis=0)
+        if len(h_layers) > 3:
+            w_conv4 = np.concatenate((w_conv4, get_activations_mat(x, keep_prob, sess, h_layers[3], sample, input_shape)), axis=0)
     fn_out = folder_name + 'all_activations.mat'
-    savemat(fn_out, mdict={'input_sample': training_data, 'h_conv1': w_hconv1, 'h_conv2': w_hconv2,
-                           'h_flat': w_flat, 'h_fc1': w_hfc1_do,
-                           'y_out': w_y_out})
+    d = {'input_sample': test_data_x, 'intended_output': test_data_y, 'h_flat': w_flat, 'h_fc1': w_hfc, 'y_out': w_y_out, 'w_conv1': w_conv1}
+    # If num_layers > 1: Append to dict:
+    if len(h_layers) > 1:
+        d['w_conv2'] = w_conv2
+    if len(h_layers) > 2:
+        d['w_conv3'] = w_conv3
+    if len(h_layers) > 3:
+        d['w_conv4'] = w_conv4
+    savemat(fn_out, mdict=d)
 
 
 def beep(freq=900, length_ms=1000):
