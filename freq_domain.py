@@ -9,11 +9,29 @@ import tf_shared as tfs
 from sklearn.model_selection import train_test_split
 
 EXPORT_DIRECTORY = 'model_exports/'
+"""
+Options are: 'ssa', 'psd', 'csm'
+"""
+data_type = 'csm'
+win_sel = 0
+pwlens = [128, 128, 128, 256, 256]
 wlens = [128, 192, 256, 384, 512]
-win_len = wlens[0]
+win_len = wlens[win_sel]
 subject_number = 99
-TRAINING_FOLDER = r'' + 'time_domain_hpf_new' + '/S' + str(subject_number) + '/' + 'w' + str(win_len)
-input_shape = [2, win_len]  # for single sample reshape(x, [1, *input_shape])
+if data_type == 'ssa':
+    input_shape = [2, wlens[win_sel] // 2]  # for single sample reshape(x, [1, *input_shape])
+    train_folder = 'ssa_periodogram'
+elif data_type == 'psd':
+    input_shape = [2, pwlens[win_sel] // 2]
+    train_folder = 'psd_welch_p' + str(pwlens[win_sel])
+elif data_type == 'csm':
+    input_shape = [3, pwlens[win_sel] // 2]
+    train_folder = 'csm_welch_p' + str(pwlens[win_sel])
+else:
+    train_folder = ''
+    input_shape = [0, 0]
+
+TRAINING_FOLDER = r'' + 'freq_domain/' + train_folder + '/S' + str(subject_number) + '/' + 'w' + str(win_len)
 NUMBER_CLASSES = 5
 
 # LOAD DATA:
@@ -87,7 +105,7 @@ with tf.Session(config=config) as sess:
                                    keep_prob_feed, train_steps)
     elapsed_time_ms = (tfs.current_time_ms() - start_time_ms)
     # Test Accuracy: (Test/Train Split)
-    tt_acc = tfs.test(sess, x, y, accuracy, x_test, y_test, keep_prob, test_type='Train-Split')
+    tt_acc = tfs.test_v2(sess, x, y, accuracy, x_test, y_test, keep_prob, test_type='Train-Split')
     # Validation Accuracy:
     val_acc = tfs.test(sess, x, y, accuracy, x_val, y_val, keep_prob)
     # Confusion Matrix:
@@ -102,7 +120,7 @@ with tf.Session(config=config) as sess:
 
     tfs.beep()
     # Save Statistics:
-    output_folder_name = EXPORT_DIRECTORY + 'S' + str(subject_number) + '_wlen' + str(win_len) + '/'
+    output_folder_name = EXPORT_DIRECTORY + 'S' + str(subject_number) + '_' + data_type + '_wlen' + str(win_len) + '/'
     if not os.path.exists(output_folder_name):
         os.makedirs(output_folder_name)
     stat_fn = 'stats_' + Model_description + '.mat'
