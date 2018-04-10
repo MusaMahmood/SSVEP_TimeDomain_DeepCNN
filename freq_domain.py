@@ -13,7 +13,7 @@ EXPORT_DIRECTORY = 'model_exports/'
 Options are: 'ssa', 'psd', 'csm'
 """
 data_type = 'csm'
-win_sel = 0
+win_sel = 4
 pwlens = [128, 128, 128, 256, 256]
 wlens = [128, 192, 256, 384, 512]
 win_len = wlens[win_sel]
@@ -126,10 +126,10 @@ with tf.Session(config=config) as sess:
     stat_fn = 'stats_' + Model_description + '.mat'
     tfs.save_statistics_v2(output_folder_name, val_accuracy_array, Model_description, model_dims + filter_dims,
                            elapsed_time_ms, val_acc, val_acc2, stat_fn)
-    # user_input = input('Export Current Model?')
-    # if user_input == "1" or user_input.lower() == "y":
-    #     tfs.get_all_activations_4layer(sess, x, keep_prob, INPUT_IMAGE_SHAPE, x_val_data, output_folder_name, h_conv1,
-    #                                h_conv2, h_conv3, h_conv4, h_flat, h_fc1, y_conv)
+    user_input = input('Export Current Model?')
+    if user_input == "1" or user_input.lower() == "y":
+        tfs.get_all_activations(sess, x, keep_prob, [1, *input_shape], x_val, y_val, output_folder_name, h, h_flat,
+                                h_fc, y_conv)
     #     CHECKPOINT_FILE = EXPORT_DIRECTORY + Model_description + '.ckpt'
     #     saver.save(sess, CHECKPOINT_FILE)
     #     tfs.export_model([input_node_name, keep_prob_node_name], output_node_name,

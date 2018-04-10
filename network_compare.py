@@ -22,17 +22,17 @@ x_train, x_test, y_train, y_test = train_test_split(x_tt, y_tt, train_size=0.75,
 x_val, y_val = tfs.load_data(TRAINING_FOLDER + '/v', input_shape, key_x='relevant_data', key_y='Y')
 x_val2, y_val2 = tfs.load_data(TRAINING_FOLDER + '/v2', input_shape, key_x='relevant_data', key_y='Y')
 # Initialize CNN Components
-NUM_LAYERS = 1  # Default
+NUM_LAYERS = 2  # Default
 N_FILTERS = [5, 5, 5, 5, 5, 5, 5, 5]  # Number of filters for 8 layers
 Str_X = [1, 1, 1, 1, 1, 1, 1, 1]
-Str_Y = [1, 1, 1, 1, 1, 1, 1, 1]
+Str_Y = [1, 2, 1, 1, 1, 1, 1, 1]
 W_x = [20, 2, 2, 2, 2, 2, 2, 2]  # Weights in x-axis
 W_y = [2, 2, 2, 2, 2, 2, 2, 2]  # Weights in y-axis, kernel size = [x, y]
 Alphas = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]  # Parametric ReLU values for Conv Layers
 Alpha_fc = 0.01  # If using parametric ReLU in fully connected layer.
 do = 'dropout'
 keep_prob_feed = 0.5
-train_steps = 3000
+train_steps = 1000
 LR_EXP = 3
 LR_COEFF = 1
 learn_rate = float(LR_COEFF) * float(10.0 ** (-float(LR_EXP)))
@@ -108,10 +108,10 @@ with tf.Session(config=config) as sess:
     stat_fn = 'stats_' + Model_description + '.mat'
     tfs.save_statistics_v2(output_folder_name, val_accuracy_array, Model_description, model_dims + filter_dims,
                            elapsed_time_ms, val_acc, val_acc2, stat_fn)
-    # user_input = input('Export Current Model?')
-    # if user_input == "1" or user_input.lower() == "y":
-    #     tfs.get_all_activations_4layer(sess, x, keep_prob, INPUT_IMAGE_SHAPE, x_val_data, output_folder_name, h_conv1,
-    #                                h_conv2, h_conv3, h_conv4, h_flat, h_fc1, y_conv)
+    user_input = input('Export Current Model?')
+    if user_input == "1" or user_input.lower() == "y":
+        tfs.get_all_activations(sess, x, keep_prob, [1, *input_shape], x_val, y_val, output_folder_name, h, h_flat,
+                                h_fc, y_conv)
     #     CHECKPOINT_FILE = EXPORT_DIRECTORY + Model_description + '.ckpt'
     #     saver.save(sess, CHECKPOINT_FILE)
     #     tfs.export_model([input_node_name, keep_prob_node_name], output_node_name,
