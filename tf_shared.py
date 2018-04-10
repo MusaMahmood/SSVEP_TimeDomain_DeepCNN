@@ -56,6 +56,17 @@ def test(sess, x, y, accuracy, x_test, y_test, keep_prob, test_type='Holdout Val
     return test_accuracy
 
 
+def test_v2(sess, x, y, accuracy, x_test, y_test, keep_prob, test_type='Holdout Validation', test_batch_size=100):
+    test_accuracy = np.zeros(shape=[x_test.shape[0] // test_batch_size], dtype=np.float32)
+    for i in range(0, x_test.shape[0]//test_batch_size):
+        batch_x = x_test[i:i+test_batch_size]
+        batch_y = y_test[i:i+test_batch_size]
+        test_accuracy[i] = sess.run(accuracy, feed_dict={x: batch_x, y: batch_y, keep_prob: 1.0})
+    test_accuracy = test_accuracy.mean()
+    print("Testing Accuracy - ", test_type, ':', test_accuracy, "\n\n")
+    return test_accuracy
+
+
 def confusion_matrix_test(sess, x, y, keep_prob, prediction, input_shape, x_val_data, y_val_data, number_classes=5):
     y_val_tf = np.zeros([x_val_data.shape[0]], dtype=np.int32)
     predictions = np.zeros([x_val_data.shape[0]], dtype=np.int32)
@@ -203,6 +214,8 @@ def fully_connect(x, w, b, keep_prob, do='dropout', activation='relu', alpha=0.0
         fc = tf.nn.leaky_relu(connected_layer, alpha=0.01)
     elif activation == 'parametricrelu':
         fc = tf.nn.leaky_relu(connected_layer, alpha=alpha)
+    elif activation == 'identity':
+        fc = tf.identity(connected_layer)
     else:
         fc = tf.nn.relu(connected_layer)
     if do == 'dropout':
