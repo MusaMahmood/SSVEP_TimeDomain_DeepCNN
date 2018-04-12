@@ -128,8 +128,8 @@ with tf.Session(config=config) as sess:
                            elapsed_time_ms, val_acc, val_acc2, stat_fn)
     user_input = input('Export Current Model?')
     if user_input == "1" or user_input.lower() == "y":
-        tfs.get_all_activations(sess, x, keep_prob, [1, *input_shape], x_val, y_val, output_folder_name, h, h_flat,
-                                h_fc, y_conv)
+        tfs.get_all_activations(sess, x, keep_prob, [1, *input_shape], x_val, y_val,
+                                output_folder_name + Model_description, h, h_flat, h_fc, y_conv)
     #     CHECKPOINT_FILE = EXPORT_DIRECTORY + Model_description + '.ckpt'
     #     saver.save(sess, CHECKPOINT_FILE)
     #     tfs.export_model([input_node_name, keep_prob_node_name], output_node_name,
