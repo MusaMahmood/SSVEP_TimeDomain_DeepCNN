@@ -6,6 +6,7 @@
 import tensorflow as tf
 import os as os
 import tf_shared as tfs
+import numpy as np
 from sklearn.model_selection import train_test_split
 
 EXPORT_DIRECTORY = 'model_exports/'
@@ -13,7 +14,7 @@ EXPORT_DIRECTORY = 'model_exports/'
 Options are: 'ssa', 'psd', 'csm'
 """
 data_type = 'csm'
-win_sel = 4
+win_sel = 0
 pwlens = [128, 128, 128, 256, 256]
 wlens = [128, 192, 256, 384, 512]
 win_len = wlens[win_sel]
@@ -39,6 +40,7 @@ x_tt, y_tt = tfs.load_data(TRAINING_FOLDER, input_shape, key_x='relevant_data', 
 x_train, x_test, y_train, y_test = train_test_split(x_tt, y_tt, train_size=0.75, random_state=1)
 x_val, y_val = tfs.load_data(TRAINING_FOLDER + '/v', input_shape, key_x='relevant_data', key_y='Y')
 x_val2, y_val2 = tfs.load_data(TRAINING_FOLDER + '/v2', input_shape, key_x='relevant_data', key_y='Y')
+
 # Initialize CNN Components
 NUM_LAYERS = 1  # Default
 N_FILTERS = [5, 5, 5, 5, 5, 5, 5, 5]  # Number of filters for 8 layers
@@ -101,33 +103,35 @@ with tf.Session(config=config) as sess:
     tf.train.write_graph(sess.graph_def, EXPORT_DIRECTORY, Model_description + '.pbtxt', True)
     start_time_ms = tfs.current_time_ms()
     # Train Model:
-    val_accuracy_array = tfs.train(x, y, keep_prob, accuracy, train_step, x_train, y_train, x_test, y_test,
-                                   keep_prob_feed, train_steps)
+    val_accuracy_rate = tfs.train(x, y, keep_prob, accuracy, train_step, x_train, y_train, x_test, y_test,
+                                  keep_prob_feed, train_steps)
     elapsed_time_ms = (tfs.current_time_ms() - start_time_ms)
     # Test Accuracy: (Test/Train Split)
     tt_acc = tfs.test_v2(sess, x, y, accuracy, x_test, y_test, keep_prob, test_type='Train-Split')
     # Validation Accuracy:
     val_acc = tfs.test(sess, x, y, accuracy, x_val, y_val, keep_prob)
     # Confusion Matrix:
-    tfs.confusion_matrix_test(sess, x, y, keep_prob, prediction, [1, *input_shape], x_val, y_val, NUMBER_CLASSES)
+    conf_matrix_v1 = tfs.confusion_matrix_test(sess, x, y, keep_prob, prediction, [1, *input_shape], x_val, y_val, NUMBER_CLASSES)
     val_acc2 = 0.0
+    conf_matrix_v2 = np.zeros([5, 5], dtype=np.int32)
     if x_val2.shape[0] > 1:
         val_acc2 = tfs.test(sess, x, y, accuracy, x_val2, y_val2, keep_prob, test_type='Validation-Subject')
-        tfs.confusion_matrix_test(sess, x, y, keep_prob, prediction, [1, *input_shape], x_val2, y_val2, NUMBER_CLASSES)
+        conf_matrix_v2 = tfs.confusion_matrix_test(sess, x, y, keep_prob, prediction, [1, *input_shape], x_val2, y_val2, NUMBER_CLASSES)
     else:
         print('No validation file found!')
     print('Elapsed Time (ms): ', elapsed_time_ms)
 
     tfs.beep()
     # Save Statistics:
-    output_folder_name = EXPORT_DIRECTORY + 'S' + str(subject_number) + '_' + data_type + '_wlen' + str(win_len) + '/'
+    output_folder_name = EXPORT_DIRECTORY + 'S' + str(subject_number) + '_' + data_type + '/wlen' + str(win_len) + '/'
     if not os.path.exists(output_folder_name):
         os.makedirs(output_folder_name)
     stat_fn = 'stats_' + Model_description + '.mat'
-    tfs.save_statistics_v2(output_folder_name, val_accuracy_array, Model_description, model_dims + filter_dims,
-                           elapsed_time_ms, val_acc, val_acc2, stat_fn)
     user_input = input('Export Current Model?')
     if user_input == "1" or user_input.lower() == "y":
+        tfs.get_trained_vars(sess, output_folder_name + Model_description)
+        tfs.save_statistics_v3(output_folder_name, val_accuracy_rate, Model_description, model_dims + filter_dims,
+                               elapsed_time_ms, val_acc, conf_matrix_v1, val_acc2, conf_matrix_v2, stat_fn)
         tfs.get_all_activations(sess, x, keep_prob, [1, *input_shape], x_val, y_val,
                                 output_folder_name + Model_description, h, h_flat, h_fc, y_conv)
     #     CHECKPOINT_FILE = EXPORT_DIRECTORY + Model_description + '.ckpt'

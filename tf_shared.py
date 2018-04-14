@@ -105,6 +105,12 @@ def var_weight_bias(w_shape, b_shape):
     return w, b
 
 
+def var_weight_bias_named(w_shape, b_shape, w_name, b_name):
+    w = tf.Variable(tf.truncated_normal(w_shape, stddev=0.1), name=w_name)
+    b = tf.Variable(tf.constant(0.1, shape=b_shape), name=b_name)
+    return w, b
+
+
 # Model Building Macros: #
 def weight(shape):
     initial = tf.truncated_normal(shape, stddev=0.1)
@@ -114,6 +120,15 @@ def weight(shape):
 def bias(shape):
     initial = tf.constant(0.1, shape=shape)
     return tf.Variable(initial)
+
+
+def conv_layer_named(input_, w_kernels, in_ch, num_kernels, strides, w_name, b_name, activation='relu', alpha=0.01):
+    """
+    See conv_layer:
+    """
+    weights, biases = var_weight_bias_named([*w_kernels, in_ch, num_kernels], [num_kernels], w_name, b_name)
+    conv_tensor = conv(input_, weights, biases, stride=[1, *strides, 1], activation=activation, alpha=alpha)
+    return conv_tensor, weights, biases
 
 
 def conv_layer(input_, w_kernels, in_ch, num_kernels, strides, activation='relu', alpha=0.01):
@@ -314,6 +329,14 @@ def save_statistics_v2(folder_name, train_rate, details, info, elapsed_time, tes
                                             'validation_accuracy': val_acc})
 
 
+def save_statistics_v3(folder_name, train_rate, details, info, elapsed_time, test_accuracy, test_conf_mat,
+                       val_acc=0, val_conf_mat=0, file_name='stats.mat'):
+    savemat(folder_name + file_name, mdict={'training_rate': train_rate, 'details': details, 'info': info,
+                                            'elapsed_time': elapsed_time, 'test_accuracy': test_accuracy,
+                                            'test_confusion' : test_conf_mat, 'validation_accuracy': val_acc,
+                                            'val_confusion': val_conf_mat})
+
+
 # # # FOR SAVING DATA:
 def get_model_description(num_layers, activation, do, keep_prob, units_fc, fc_activation,
                           lr_coeff, lr_exp, num_filters, conv_alpha=0.01, fc_alpha=0.01):
@@ -381,13 +404,17 @@ def get_all_activations(sess, x, keep_prob, input_shape, test_data_x, test_data_
         w_conv1 = np.concatenate((w_conv1, get_activations_mat(x, keep_prob, sess, h_layers[0], sample, input_shape)),
                                  axis=0)
         if len(h_layers) > 1:
-            w_conv2 = np.concatenate((w_conv2, get_activations_mat(x, keep_prob, sess, h_layers[1], sample, input_shape)), axis=0)
+            w_conv2 = np.concatenate(
+                (w_conv2, get_activations_mat(x, keep_prob, sess, h_layers[1], sample, input_shape)), axis=0)
         if len(h_layers) > 2:
-            w_conv3 = np.concatenate((w_conv3, get_activations_mat(x, keep_prob, sess, h_layers[2], sample, input_shape)), axis=0)
+            w_conv3 = np.concatenate(
+                (w_conv3, get_activations_mat(x, keep_prob, sess, h_layers[2], sample, input_shape)), axis=0)
         if len(h_layers) > 3:
-            w_conv4 = np.concatenate((w_conv4, get_activations_mat(x, keep_prob, sess, h_layers[3], sample, input_shape)), axis=0)
+            w_conv4 = np.concatenate(
+                (w_conv4, get_activations_mat(x, keep_prob, sess, h_layers[3], sample, input_shape)), axis=0)
     fn_out = folder_name + 'all_activations.mat'
-    d = {'input_sample': test_data_x, 'intended_output': test_data_y, 'h_flat': w_flat, 'h_fc1': w_hfc, 'y_out': w_y_out, 'w_conv1': w_conv1}
+    d = {'input_sample': test_data_x, 'intended_output': test_data_y, 'h_flat': w_flat, 'h_fc1': w_hfc,
+         'y_out': w_y_out, 'w_conv1': w_conv1}
     # If num_layers > 1: Append to dict:
     if len(h_layers) > 1:
         d['w_conv2'] = w_conv2
@@ -396,6 +423,18 @@ def get_all_activations(sess, x, keep_prob, input_shape, test_data_x, test_data_
     if len(h_layers) > 3:
         d['w_conv4'] = w_conv4
     savemat(fn_out, mdict=d)
+
+
+def get_trained_vars(sess, filename):
+    local_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+    d = {'ignore': 1.0}
+    for i in range(0, len(local_vars)):
+        key = local_vars[i]._shared_name
+        var = sess.run(local_vars[i])
+        # add to dict
+        d[key] = var
+    filename += 'trained_variables.mat'
+    savemat(file_name=filename, mdict=d)
 
 
 def beep(freq=900, length_ms=1000):
