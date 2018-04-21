@@ -166,6 +166,7 @@ def output_layer(x, w_shape, b_shape, version='v1'):
         return connect_v2(x, w_fco, b_fco)
 
 
+# def conv(x, w, b, stride=list([1, 1, 1, 1]), activation='relu', padding='SAME', alpha=0.01, crelu=False):
 def conv(x, w, b, stride=list([1, 1, 1, 1]), activation='relu', padding='SAME', alpha=0.01):
     x = tf.nn.conv2d(x, w, strides=stride, padding=padding)
     x = tf.nn.bias_add(x, b)
@@ -177,8 +178,9 @@ def conv(x, w, b, stride=list([1, 1, 1, 1]), activation='relu', padding='SAME', 
         return tf.nn.leaky_relu(x, alpha=0.01)
     elif activation == 'parametricrelu':
         return tf.nn.leaky_relu(x, alpha=alpha)
-    elif activation == 'crelu':
-        return tf.nn.crelu(x)
+    # TODO: This is not how to apply crelu: see example code.
+    # elif activation == 'crelu':
+    #     return tf.nn.crelu(x)
     elif activation == 'selu':
         return tf.nn.selu(x)
     elif activation == 'identity':
@@ -333,7 +335,7 @@ def save_statistics_v3(folder_name, train_rate, details, info, elapsed_time, tes
                        val_acc=0, val_conf_mat=0, file_name='stats.mat'):
     savemat(folder_name + file_name, mdict={'training_rate': train_rate, 'details': details, 'info': info,
                                             'elapsed_time': elapsed_time, 'test_accuracy': test_accuracy,
-                                            'test_confusion' : test_conf_mat, 'validation_accuracy': val_acc,
+                                            'test_confusion': test_conf_mat, 'validation_accuracy': val_acc,
                                             'val_confusion': val_conf_mat})
 
 
@@ -385,6 +387,9 @@ def get_all_activations(sess, x, keep_prob, input_shape, test_data_x, test_data_
     # Create Empty Arrays: TODO: CHANGE PREALLOCATION METHOD (this is slooow)
     w_conv = [np.empty([0, *i]) for i in h_conv_shapes]
     w_conv1 = w_conv[0]
+    w_conv2 = [0]
+    w_conv3 = [0]
+    w_conv4 = [0]
     if len(h_layers) > 1:
         w_conv2 = w_conv[1]
     if len(h_layers) > 2:
